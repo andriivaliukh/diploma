@@ -1,0 +1,39 @@
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - caddy-data:/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - vpn-server
+    restart: unless-stopped
+
+  vpn-server:
+    build: .
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.ip_forward=1
+    expose:
+      - "8000"
+    ports:
+      - "51820:51820/udp"
+    volumes:
+      - vpn-data:/data
+    environment:
+      - VPN_SECRET_KEY=${VPN_SECRET_KEY}
+      - VPN_JWT_SECRET=${VPN_JWT_SECRET}
+      - VPN_WG_ENDPOINT=${VPN_WG_ENDPOINT:-vpn.example.com:51820}
+      - VPN_WG_SUBNET=${VPN_WG_SUBNET:-10.10.0.0/24}
+      - VPN_ADMIN_USERNAME=${VPN_ADMIN_USERNAME:-admin}
+      - VPN_ADMIN_PASSWORD=${VPN_ADMIN_PASSWORD}
+      - VPN_DB_PATH=/data/vpnservice.db
+      - VPN_WG_PRIVATE_KEY_PATH=/data/wg_private.key
+    restart: unless-stopped
+
+volumes:
+  vpn-data:
+  caddy-data:

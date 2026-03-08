@@ -1,0 +1,4 @@
+{$VPN_DOMAIN:localhost} {
+    reverse_proxy vpn-server:8000
+    tls {$TLS_MODE:internal}
+}

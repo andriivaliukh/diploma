@@ -1,0 +1,44 @@
+\documentclass[14pt,a4paper]{extreport}
+
+\input{preamble}
+
+\begin{document}
+
+%% --- Титульна сторінка ---
+\include{title_page}
+
+%% --- Реферат ---
+\include{abstract}
+
+%% --- Перелік скорочень ---
+\include{abbreviations}
+
+%% --- Зміст ---
+\tableofcontents
+\newpage
+
+%% --- Вступ ---
+\include{introduction}
+
+%% --- Розділ 1 ---
+\include{chapter1}
+
+%% --- Розділ 2 ---
+\include{chapter2}
+
+%% --- Розділ 3 ---
+\include{chapter3}
+
+%% --- Висновки ---
+\include{conclusions}
+
+%% --- Список використаних джерел ---
+\newpage
+\addcontentsline{toc}{chapter}{СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ}
+\printbibliography[title={СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ}]
+
+%% --- Додатки ---
+\appendix
+\include{appendices/appendix_a}
+
+\end{document}
