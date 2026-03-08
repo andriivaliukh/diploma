@@ -127,6 +127,11 @@ class MockWireGuardManager:
     def get_endpoint(self) -> str:
         return self.SERVER_ENDPOINT
 
+    async def is_available(self) -> bool:
+        if self._fail_mode:
+            return False
+        return True
+
 
 # ── Settings fixture ──────────────────────────────────────────────────────────
 

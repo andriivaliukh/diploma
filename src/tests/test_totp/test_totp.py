@@ -16,6 +16,7 @@ import pyotp
 import pytest
 
 from tests.conftest import MockWireGuardManager, WG_PUBLIC_KEY_1, WG_PUBLIC_KEY_2
+from vpnservice.wireguard.manager import WireGuardError
 
 
 # ── TOTP algorithm ────────────────────────────────────────────────────────────
@@ -164,13 +165,13 @@ class TestMockWireGuardManager:
     async def test_fail_mode_raises_on_add_peer(self):
         mgr = MockWireGuardManager()
         mgr.set_fail_mode(True)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(WireGuardError):
             await mgr.add_peer(WG_PUBLIC_KEY_1, "10.10.0.2/32")
 
     async def test_fail_mode_raises_on_remove_peer(self):
         mgr = MockWireGuardManager()
         mgr.set_fail_mode(True)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(WireGuardError):
             await mgr.remove_peer(WG_PUBLIC_KEY_1)
 
     def test_get_server_public_key_returns_string(self):
