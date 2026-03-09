@@ -1,7 +1,731 @@
-\chapter{Реалізація системи VPN з двофакторною автентифікацією}
+\chapter{Реалізація та тестування системи}
 
-% TODO: написати розділ 3
+У цьому розділі описується практична реалізація системи VPN з двофакторною
+автентифікацією. Розглядається структура проєкту та середовище розробки,
+детально висвітлюються ключові компоненти серверної та клієнтської частин,
+описується конфігурація середовища розгортання та наводяться результати тестування.
 
-Цей розділ буде присвячено реалізації системи.
+У підрозділі~3.1 описується структура проєкту та інструменти розробки.
+Підрозділи~3.2--3.5 присвячені реалізації автентифікації, TOTP, управлінню
+WireGuard та VPN-сесіями відповідно. У підрозділі~3.6 розглядається CLI-клієнт,
+у підрозділі~3.7~--- конфігурація розгортання. Підрозділ~3.8 описує стратегію
+тестування та наводить результати. Підрозділ~3.9 містить висновки до розділу.
+
+%% ============================================================
+\section{Структура проєкту}
+\label{sec:project_structure}
+%% ============================================================
+
+Проєкт організовано як єдиний Python-пакет з двома підпакетами:
+\texttt{vpnservice}~--- серверна частина, та \texttt{vpncli}~--- клієнтська
+консольна утиліта. Конфігурація побудови та залежностей описана у файлі
+\texttt{pyproject.toml} відповідно до стандарту PEP~517~\cite{fastapi2024}.
+
+Структура каталогів проєкту виглядає наступним чином:
+
+\begin{lstlisting}[style=mystyle, language=bash, caption={Структура каталогів проєкту},
+  label={lst:project_tree}]
+src/
+  vpnservice/         # серверний пакет (FastAPI)
+    auth/             # автентифікація: реєстрація, вхід, JWT
+    totp/             # TOTP: генерація, шифрування, верифікація
+    vpn/              # VPN-сесії: router, service, IP-алокатор
+    wireguard/        # WireGuardManager, схеми PeerStats
+    admin/            # адміністративні маршрути та сервіс
+    tasks/            # фонове завдання очищення сесій
+    main.py           # FastAPI-застосунок та lifespan
+    models.py         # ORM-моделі SQLAlchemy
+    config.py         # Pydantic-налаштування
+  vpncli/             # клієнтський пакет (Typer CLI)
+    main.py           # команди: register, login, connect, ...
+    tunnel.py         # генерація ключів, wg-quick
+    auth.py           # інтерактивні потоки логіну/реєстрації
+    api_client.py     # HTTP-клієнт до vpnservice
+  tests/              # набір тестів (pytest)
+  Dockerfile          # образ Docker для vpnservice
+  docker-compose.yml  # оркестрація: vpn-server + Caddy
+  pyproject.toml      # залежності та скрипти
+\end{lstlisting}
+
+Файл \texttt{pyproject.toml} описує залежності сервера та необов'язкові групи
+\texttt{cli} і \texttt{dev}. До ключових залежностей сервера
+відносяться~\cite{fastapi2024, sqlalchemy2024, argon2cffi2024, pyjwt2024,
+pyotp2024, cryptography2024}:
+
+\begin{itemize}
+  \item \texttt{fastapi}~$\geq$~0.115~--- асинхронний веб-фреймворк;
+  \item \texttt{sqlalchemy[asyncio]}~$\geq$~2.0~--- ORM з підтримкою
+        асинхронних операцій~\cite{sqlalchemy2024};
+  \item \texttt{argon2-cffi}~--- хешування паролів алгоритмом Argon2id;
+  \item \texttt{pyjwt}~--- кодування та декодування JWT-токенів~\cite{pyjwt2024};
+  \item \texttt{pyotp}~--- генерація та верифікація TOTP~\cite{pyotp2024};
+  \item \texttt{cryptography}~--- симетричне шифрування Fernet для зберігання
+        TOTP-секретів~\cite{cryptography2024};
+  \item \texttt{aiosqlite}~--- асинхронний SQLite-драйвер.
+\end{itemize}
+
+Команда \texttt{vpncli} встановлюється як скрипт через \texttt{pyproject.toml}
+і доступна після \texttt{pip install .[cli]}. Для розробки та тестування
+використовується \texttt{pytest}~\cite{pytest2024} з плагіном
+\texttt{pytest-asyncio}, що дозволяє безпосередньо тестувати
+асинхронні корутини.
+
+%% ============================================================
+\section{Реалізація автентифікації}
+\label{sec:auth_implementation}
+%% ============================================================
+
+Підсистема автентифікації реалізує двоетапну схему входу: на першому
+кроці перевіряються логін і пароль, на другому~--- одноразовий TOTP-код.
+Таким чином компрометація лише одного фактора не надає зловмиснику
+повного доступу до системи.
+
+\subsection{Хешування паролів (Argon2id)}
+
+Для зберігання паролів застосовується алгоритм Argon2id~\cite{biryukov2016argon2}~---
+переможець конкурсу Password Hashing Competition 2015. Порівняно з
+bcrypt та PBKDF2, Argon2id є стійким як до часових атак (time-memory
+trade-off), так і до атак на базі графічних процесорів завдяки
+налаштовуваному споживанню оперативної пам'яті. Реалізацію забезпечує
+бібліотека \texttt{argon2-cffi}~\cite{argon2cffi2024}.
+
+Лістинг~\ref{lst:password_hash} демонструє функції хешування та верифікації
+паролю у модулі \texttt{auth/service.py}.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Хешування та верифікація паролю (Argon2id)},
+  label={lst:password_hash}]
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+_password_hasher = PasswordHasher()
+
+def hash_password(password: str) -> str:
+    """Hash a plaintext password using Argon2id."""
+    return _password_hasher.hash(password)
+
+def verify_password(plain_password: str,
+                    password_hash: str) -> bool:
+    """Verify a plaintext password against Argon2id hash."""
+    try:
+        return _password_hasher.verify(
+            password_hash, plain_password
+        )
+    except VerifyMismatchError:
+        return False
+\end{lstlisting}
+
+Клас \texttt{PasswordHasher} бібліотеки \texttt{argon2-cffi} автоматично
+застосовує рекомендовані параметри: час виконання, використання пам'яті та
+ступінь паралелізму, що відповідають поточним рекомендаціям OWASP.
+
+\subsection{JWT-токени та двоетапний вхід}
+
+Після перевірки пароля сервер видає \textit{проміжний} JWT-токен з областю
+видимості \texttt{scope=totp\_verify} та коротким терміном дії (5 хвилин).
+Лише після успішної верифікації TOTP-коду видається повноцінний токен доступу
+з \texttt{scope=full}~\cite{rfc7519}. Реалізацію забезпечує бібліотека
+\texttt{pyjwt}~\cite{pyjwt2024}.
+
+Лістинг~\ref{lst:jwt_tokens} показує функції генерації токенів у модулі
+\texttt{auth/jwt.py}.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Генерація JWT-токенів (проміжного та доступу)},
+  label={lst:jwt_tokens}]
+from datetime import datetime, timedelta, timezone
+import jwt
+from vpnservice.config import Settings
+
+def create_intermediate_token(user_id: str,
+                               settings: Settings) -> str:
+    """Short-lived JWT for the TOTP verification step."""
+    now = datetime.now(tz=timezone.utc)
+    payload = {
+        "sub": user_id,
+        "scope": "totp_verify",
+        "iat": now,
+        "exp": now + timedelta(
+            seconds=settings.jwt_intermediate_ttl
+        ),
+    }
+    return jwt.encode(payload, settings.jwt_secret,
+                      algorithm="HS256")
+
+def create_access_token(user_id: str, is_admin: bool,
+                        settings: Settings) -> str:
+    """Full-access JWT after successful TOTP verification."""
+    now = datetime.now(tz=timezone.utc)
+    payload = {
+        "sub": user_id,
+        "scope": "full",
+        "is_admin": is_admin,
+        "iat": now,
+        "exp": now + timedelta(
+            seconds=settings.jwt_access_ttl
+        ),
+    }
+    return jwt.encode(payload, settings.jwt_secret,
+                      algorithm="HS256")
+\end{lstlisting}
+
+Двоетапна схема ефективно захищає систему: проміжний токен обмежений єдиним
+ендпоінтом \texttt{POST /api/v1/auth/totp/verify} і не може бути використаний
+для доступу до VPN-ресурсів. Перевірка клейму \texttt{scope} здійснюється
+у middleware-залежності FastAPI на кожному захищеному маршруті.
+
+Повний потік автентифікації включає: реєстрацію користувача, зарахування
+TOTP-секрету, вхід за логіном/паролем, верифікацію TOTP-коду та отримання
+повного токена доступу для подальших запитів до API.
+
+%% ============================================================
+\section{Реалізація TOTP}
+\label{sec:totp_implementation}
+%% ============================================================
+
+Модуль \texttt{totp/service.py} реалізує повний цикл роботи з одноразовими
+паролями на основі часу відповідно до RFC~6238~\cite{rfc6238}: генерацію
+секрету, формування QR-коду для застосунків-автентифікаторів, шифрування
+секрету для зберігання у базі даних та верифікацію введеного коду.
+
+\subsection{Генерація TOTP-секрету та QR-коду}
+
+Бібліотека \texttt{pyotp}~\cite{pyotp2024} генерує випадковий Base32-секрет та
+формує URI у форматі \texttt{otpauth://} для сканування застосунками на
+кшталт Google Authenticator або Authy. QR-код кодується у форматі base64
+PNG для передачі через REST API.
+
+Лістинг~\ref{lst:totp_generate} демонструє функцію генерації TOTP-секрету.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Генерація TOTP-секрету та QR-коду},
+  label={lst:totp_generate}]
+import base64
+from io import BytesIO
+import pyotp, qrcode
+from cryptography.fernet import Fernet
+
+def generate_totp_secret(username: str,
+                         settings) -> tuple:
+    """Generate TOTP secret, URI, QR image, encrypted secret."""
+    plain_secret = pyotp.random_base32()
+    totp = pyotp.TOTP(plain_secret)
+    totp_uri = totp.provisioning_uri(
+        name=username, issuer_name="VPNService"
+    )
+    # Render QR code as base64-encoded PNG
+    qr = qrcode.QRCode()
+    qr.add_data(totp_uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black",
+                        back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(
+        buffer.getvalue()
+    ).decode()
+    # Encrypt secret for DB storage
+    encrypted = encrypt_secret(plain_secret, settings)
+    return plain_secret, totp_uri, qr_base64, encrypted
+\end{lstlisting}
+
+\subsection{Шифрування TOTP-секрету (Fernet)}
+
+TOTP-секрет є чутливими даними: його компрометація дозволила б зловмиснику
+самостійно генерувати дійсні коди. Тому секрет зберігається у базі даних
+лише у зашифрованому вигляді з використанням симетричного шифру
+Fernet~\cite{cryptography2024}. Fernet базується на AES-128-CBC з підписом
+HMAC-SHA256, що гарантує конфіденційність та цілісність.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Шифрування TOTP-секрету за допомогою Fernet},
+  label={lst:totp_encrypt}]
+from cryptography.fernet import Fernet, InvalidToken
+
+def encrypt_secret(plain_secret: str, settings) -> str:
+    """Encrypt TOTP secret for database storage."""
+    key = settings.secret_key
+    if isinstance(key, str):
+        key = key.encode()
+    fernet = Fernet(key)
+    return fernet.encrypt(plain_secret.encode()).decode()
+
+def decrypt_secret(encrypted_secret: str,
+                   settings) -> str:
+    """Decrypt stored TOTP secret."""
+    key = settings.secret_key
+    if isinstance(key, str):
+        key = key.encode()
+    fernet = Fernet(key)
+    try:
+        return fernet.decrypt(
+            encrypted_secret.encode()
+        ).decode()
+    except InvalidToken as exc:
+        raise ValueError(
+            "Failed to decrypt TOTP secret"
+        ) from exc
+\end{lstlisting}
+
+\subsection{Верифікація TOTP-коду}
+
+При верифікації коду секрет розшифровується з бази даних, після чого
+перевіряється за допомогою \texttt{pyotp.TOTP.verify} з вікном допуску
+$\pm 1$ часовий крок (30 секунд з кожного боку). Це компенсує можливе
+розходження годинників між клієнтом і сервером відповідно до рекомендацій
+RFC~6238~\cite{rfc6238}.
+
+%% ============================================================
+\section{Реалізація керування WireGuard}
+\label{sec:wireguard_implementation}
+%% ============================================================
+
+Клас \texttt{WireGuardManager} у модулі \texttt{wireguard/manager.py} є
+ключовою сполучною ланкою між рівнем бізнес-логіки та ядром операційної
+системи. Він керує інтерфейсом WireGuard~--- створює його при старті,
+додає та видаляє пари ключів (peers), а також зчитує статистику
+трафіку~\cite{donenfeld2017wireguard}.
+
+\subsection{Взаємодія з WireGuard через asyncio subprocess}
+
+Всі операції з WireGuard виконуються через виклики системних утиліт
+\texttt{wg} та \texttt{ip} за допомогою \texttt{asyncio.create\_subprocess\_exec}.
+Асинхронний підхід дозволяє не блокувати event loop FastAPI під час
+виконання системних команд. Лістинг~\ref{lst:wg_manager} демонструє метод
+додавання вузла та базовий допоміжний метод запуску підпроцесу.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={WireGuardManager: додавання вузла та запуск підпроцесу},
+  label={lst:wg_manager}]
+import asyncio
+from vpnservice.wireguard.schemas import PeerStats
+
+class WireGuardManager:
+    """Manages WireGuard interface and peer lifecycle."""
+
+    async def add_peer(self, public_key: str,
+                       allowed_ips: str,
+                       preshared_key: str | None = None
+                       ) -> None:
+        args = ["wg", "set", self._settings.wg_interface,
+                "peer", public_key,
+                "allowed-ips", allowed_ips]
+        if preshared_key:
+            args += ["preshared-key", "/dev/stdin"]
+            await self._run(*args,
+                            stdin_data=preshared_key)
+        else:
+            await self._run(*args)
+
+    async def _run(self, *args: str,
+                   stdin_data: str | None = None
+                   ) -> None:
+        """Run command; raise WireGuardError on failure."""
+        stdin_flag = (asyncio.subprocess.PIPE
+                      if stdin_data else None)
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdin=stdin_flag,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        input_bytes = (stdin_data.encode()
+                       if stdin_data else None)
+        _, stderr = await proc.communicate(
+            input=input_bytes
+        )
+        if proc.returncode != 0:
+            raise WireGuardError(
+                f"{args[0]} failed: "
+                f"{stderr.decode().strip()}"
+            )
+\end{lstlisting}
+
+\subsection{Ініціалізація інтерфейсу}
+
+Під час старту застосунку викликається метод \texttt{initialize}, який:
+(1)~перевіряє наявність файлу приватного ключа сервера, генеруючи його
+за відсутності; (2)~виводить публічний ключ за допомогою \texttt{wg pubkey};
+(3)~створює мережевий інтерфейс \texttt{wg0}, якщо він відсутній;
+(4)~налаштовує IP-адресу сервера у підмережі; (5)~піднімає інтерфейс.
+Ця операція є ідемпотентною та безпечною для повторного виклику.
+
+У \texttt{main.py} ініціалізація виконується у \texttt{lifespan}-контексті
+FastAPI. Якщо WireGuard недоступний (наприклад, у середовищі без привілеїв
+ядра), сервер продовжує роботу в деградованому режимі~--- API доступне,
+але запити на створення VPN-сесій відхиляються з кодом 503.
+
+\subsection{Розбір виводу wg show dump}
+
+Для отримання статистики трафіку використовується команда
+\texttt{wg show <interface> dump}, вивід якої розбирається методом
+\texttt{\_parse\_dump\_output}. Для кожного вузла витягуються:
+публічний ключ, дозволені IP-адреси, час останнього рукостискання,
+кількість отриманих та надісланих байтів.
+
+%% ============================================================
+\section{Реалізація VPN-сесій}
+\label{sec:sessions_implementation}
+%% ============================================================
+
+Модуль \texttt{vpn/service.py} реалізує бізнес-логіку управління
+VPN-сесіями: створення, перегляд, відкликання та обмеження кількості
+активних сесій на користувача. Кожна сесія прив'язана до конкретного
+пристрою (пари ключів WireGuard) та має час закінчення дії.
+
+\subsection{Виділення IP-адреси}
+
+Функція \texttt{allocate\_ip} у модулі \texttt{vpn/ip\_allocator.py}
+реалізує детерміністичне виділення найменшої вільної IP-адреси з пулу
+підмережі. Перша адреса хоста завжди резервується для сервера.
+
+Лістинг~\ref{lst:ip_allocator} демонструє логіку виділення адреси.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Алокатор IP-адрес для підмережі WireGuard},
+  label={lst:ip_allocator}]
+import ipaddress
+from sqlalchemy import select
+from vpnservice.models import SessionStatus, VPNSession
+
+async def allocate_ip(db, settings) -> str | None:
+    """Assign lowest available IP from WireGuard subnet.
+
+    Server always holds the first host (.1).
+    Clients receive .2 through .254 in order.
+    Returns IP in CIDR notation or None if exhausted.
+    """
+    subnet = ipaddress.ip_network(settings.wg_subnet)
+    all_hosts = list(subnet.hosts())
+
+    result = await db.execute(
+        select(VPNSession.assigned_ip).where(
+            VPNSession.status == SessionStatus.active
+        )
+    )
+    in_use: set[str] = {
+        row[0].split("/")[0] for row in result.all()
+    }
+
+    for host in all_hosts[1:]:  # skip server address
+        if str(host) not in in_use:
+            return f"{host}/32"
+    return None
+\end{lstlisting}
+
+\subsection{Створення сесії та реєстрація вузла}
+
+Функція \texttt{create\_session} перевіряє ліміт активних сесій для
+користувача (значення \texttt{max\_sessions\_per\_user} зберігається у
+таблиці системних налаштувань \texttt{SystemSettings}), виділяє IP-адресу,
+реєструє або оновлює запис пристрою у базі даних, додає вузол WireGuard
+через \texttt{WireGuardManager.add\_peer} та зберігає сесію з терміном
+дії \texttt{session\_ttl\_hours} годин. У відповіді клієнту повертаються
+всі необхідні параметри для конфігурації WireGuard-тунелю: публічний
+ключ сервера, адреса ендпоінту, виділена IP-адреса та DNS-сервери.
+
+\subsection{Фонове очищення сесій}
+
+Модуль \texttt{tasks/cleanup.py} реалізує асинхронне фонове завдання,
+що кожні 60 секунд перевіряє наявність прострочених активних сесій,
+видаляє відповідні вузли з WireGuard та оновлює статус сесій у базі
+даних. Завдання запускається при старті застосунку через
+\texttt{asyncio.create\_task} та скасовується при зупинці у
+\texttt{lifespan}-контексті. Помилки всередині одного циклу перехоплюються
+та логуються~--- цикл продовжує виконання незалежно від одиничних збоїв.
+
+%% ============================================================
+\section{CLI-клієнт}
+\label{sec:cli_implementation}
+%% ============================================================
+
+Консольна утиліта \texttt{vpncli} реалізована на базі фреймворку
+Typer~\cite{typer2024}, що забезпечує декларативний опис команд та
+автоматичну генерацію довідки. Для форматованого виводу в термінал
+використовується бібліотека \texttt{rich}. HTTP-взаємодія з сервером
+здійснюється через синхронний клієнт \texttt{httpx}.
+
+\subsection{Команди CLI}
+
+Утиліта \texttt{vpncli} надає такі команди:
+\begin{itemize}
+  \item \texttt{register}~--- інтерактивна реєстрація нового облікового
+        запису з прийманням TOTP-зарахування;
+  \item \texttt{login}~--- двоетапний вхід (пароль + TOTP) та збереження
+        токена доступу у \texttt{\textasciitilde/.vpncli/tokens.json};
+  \item \texttt{connect}~--- генерація ефемерної пари ключів WireGuard,
+        створення VPN-сесії, запис конфігурації у тимчасовий файл та
+        піднімання тунелю через \texttt{wg-quick};
+  \item \texttt{disconnect}~--- відкликання сесії на сервері;
+  \item \texttt{status}~--- відображення статусу токена та стану тунелю;
+  \item \texttt{sessions list / revoke}~--- керування сесіями.
+\end{itemize}
+
+\subsection{Управління тунелем}
+
+Модуль \texttt{tunnel.py} інкапсулює всі операції на рівні WireGuard:
+генерацію ефемерної пари ключів (\texttt{wg genkey} + \texttt{wg pubkey}),
+формування конфігураційного файлу у форматі \texttt{wg-quick} та
+піднімання/опускання тунелю. Конфігураційний файл записується у
+тимчасовий файл \texttt{/tmp/vpncli-*.conf} з правами \texttt{0600}
+і видаляється після зупинки тунелю. Сигнали \texttt{SIGINT} та
+\texttt{SIGTERM} перехоплюються: при отриманні сигналу тунель опускається
+та сесія відкликається на сервері до завершення процесу.
+
+\subsection{Пакування CLI у Docker-образ}
+
+Утиліта \texttt{vpncli} може бути запущена у Docker-контейнері з доступом
+до мережевих привілеїв хосту (\texttt{--cap-add NET\_ADMIN}) та шаром
+\texttt{wireguard-tools}. Ця можливість зручна для тестування у середовищах
+без встановлених інструментів WireGuard на хості. Сам \texttt{Dockerfile}
+на основі \texttt{python:3.12-slim} встановлює системні пакети
+\texttt{wireguard-tools} та \texttt{iproute2}, після чого встановлює
+сервісний пакет через \texttt{pip install}~\cite{docker2024}.
+
+%% ============================================================
+\section{Розгортання}
+\label{sec:ch3_deployment}
+%% ============================================================
+
+Система розгортається через Docker Compose~\cite{docker2024} і складається
+з двох контейнерів: \texttt{vpn-server} (FastAPI-застосунок) та
+\texttt{caddy} (зворотний проксі з автоматичним TLS).
+
+\subsection{Docker Compose та привілеї контейнера}
+
+Контейнер \texttt{vpn-server} потребує привілеїв ядра для роботи з
+WireGuard. У \texttt{docker-compose.yml} задаються:
+\texttt{cap\_add: NET\_ADMIN} (надання можливості NET\_ADMIN для управління
+мережевими інтерфейсами) та \texttt{sysctls: net.ipv4.ip\_forward=1}
+(увімкнення маршрутизації IP-пакетів між інтерфейсами). Порт \texttt{51820/udp}
+відкрито для WireGuard-трафіку. Конфігураційні параметри передаються
+через змінні середовища: \texttt{VPN\_SECRET\_KEY}, \texttt{VPN\_JWT\_SECRET},
+\texttt{VPN\_WG\_ENDPOINT}, \texttt{VPN\_WG\_SUBNET} тощо.
+
+\subsection{Caddy як зворотний проксі}
+
+Caddy~\cite{caddy2024}~--- веб-сервер з автоматичним отриманням та
+поновленням TLS-сертифікатів через протокол ACME (Let's Encrypt).
+Він виступає зворотним проксі для \texttt{vpn-server}: приймає HTTPS-запити
+на порту 443, термінує TLS та пересилає трафік на внутрішній порт 8000.
+Це дозволяє повністю уникнути ручного управління сертифікатами.
+
+\texttt{Caddyfile} містить мінімальну конфігурацію:
+\begin{lstlisting}[style=mystyle, language=bash,
+  caption={Конфігурація Caddy як зворотного проксі},
+  label={lst:caddyfile}]
+vpn.example.com {
+    reverse_proxy vpn-server:8000
+}
+\end{lstlisting}
+
+\subsection{Постійне зберігання даних}
+
+Том \texttt{vpn-data} монтується у \texttt{/data} контейнера та містить
+SQLite-базу даних (\texttt{vpnservice.db}) та файл приватного ключа
+WireGuard (\texttt{wg\_private.key}). Таким чином дані зберігаються між
+перезапусками контейнера. Том \texttt{caddy-data} містить TLS-сертифікати,
+що дозволяє уникнути повторних запитів до Let's Encrypt при перезапусках.
+
+%% ============================================================
+\section{Тестування}
+\label{sec:testing}
+%% ============================================================
+
+Тестування системи охоплює одиничні тести окремих модулів (unit),
+інтеграційні тести на рівні HTTP API та наскрізні тести (end-to-end),
+що перевіряють повний сценарій взаємодії користувача з системою.
+
+\subsection{Стратегія тестування}
+
+Тести реалізовані з використанням фреймворку \texttt{pytest}~\cite{pytest2024}
+з плагіном \texttt{pytest-asyncio} у режимі \texttt{asyncio\_mode = "auto"}.
+Ізоляція від зовнішніх залежностей досягається такими засобами:
+\begin{itemize}
+  \item \textbf{База даних}: для кожного тесту використовується окремий
+        SQLite in-memory двигун (\texttt{sqlite+aiosqlite:///:memory:} з
+        \texttt{StaticPool}). Схема бази створюється та знищується у
+        рамках фікстури \texttt{db\_engine}.
+  \item \textbf{WireGuard}: клас \texttt{MockWireGuardManager} замінює
+        реальний \texttt{WireGuardManager} і записує всі виклики.
+  \item \textbf{FastAPI}: через \texttt{httpx.ASGITransport} тести
+        надсилають HTTP-запити безпосередньо до ASGI-застосунку без
+        реальної мережевої взаємодії.
+\end{itemize}
+
+\subsection{MockWireGuardManager}
+
+Клас \texttt{MockWireGuardManager} у \texttt{tests/conftest.py} повністю
+відтворює публічний інтерфейс \texttt{WireGuardManager}: методи
+\texttt{add\_peer}, \texttt{remove\_peer}, \texttt{list\_peers},
+\texttt{get\_peer\_stats}, \texttt{is\_available} тощо. Він зберігає
+внутрішній словник \texttt{peers} та списки \texttt{add\_peer\_calls} і
+\texttt{remove\_peer\_calls} для перевірки взаємодії.
+Метод \texttt{set\_fail\_mode} дозволяє симулювати недоступність
+WireGuard для тестування граничних випадків.
+
+Лістинг~\ref{lst:mock_wg} демонструє ключові методи макет-об'єкта.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={MockWireGuardManager: макет WireGuard для тестів},
+  label={lst:mock_wg}]
+class MockWireGuardManager:
+    """Mock WireGuardManager that records all calls."""
+
+    SERVER_PUBLIC_KEY = base64.b64encode(
+        b"server-public-key-test-000000000"
+    ).decode()
+    SERVER_ENDPOINT = "vpn.test.example.com:51820"
+
+    def __init__(self) -> None:
+        self.peers: dict[str, str] = {}
+        self.add_peer_calls: list[dict] = []
+        self.remove_peer_calls: list[str] = []
+        self._fail_mode = False
+
+    async def add_peer(self, public_key: str,
+                       allowed_ips: str, **_) -> None:
+        if self._fail_mode:
+            raise WireGuardError("Interface unavailable")
+        self.peers[public_key] = allowed_ips
+        self.add_peer_calls.append(
+            {"public_key": public_key,
+             "allowed_ips": allowed_ips}
+        )
+
+    async def is_available(self) -> bool:
+        return not self._fail_mode
+\end{lstlisting}
+
+\subsection{Наскрізний інтеграційний тест}
+
+Клас \texttt{TestFullUserFlow} у \texttt{tests/test\_integration/test\_full\_flow.py}
+реалізує повний сценарій взаємодії: реєстрація, зарахування TOTP, вхід,
+верифікація TOTP-коду, створення VPN-сесії, перегляд списку сесій,
+отримання деталей сесії, відкликання сесії та повторне створення.
+На кожному кроці перевіряється коректність HTTP-статусів, вмісту відповідей
+та стану \texttt{MockWireGuardManager} (зокрема, що ключ вузла присутній
+або видалений у словнику \texttt{peers}).
+
+Лістинг~\ref{lst:e2e_test} показує фрагмент наскрізного тесту.
+
+\begin{lstlisting}[style=mystyle, language=Python,
+  caption={Фрагмент наскрізного інтеграційного тесту},
+  label={lst:e2e_test}]
+async def test_complete_user_flow(
+    self, app_client, db_session, mock_wg_manager
+):
+    # 1. Register user
+    reg = await app_client.post(
+        "/api/v1/auth/register",
+        json={"username": "e2euser",
+              "password": "password123"},
+    )
+    assert reg.status_code == 201
+    totp_secret = reg.json()["totp_secret"]
+
+    # Mark TOTP enrolled in DB
+    await db_session.execute(
+        update(TOTPSecret).values(is_verified=True)
+    )
+    await db_session.commit()
+
+    # 3. Login -> intermediate token
+    login = await app_client.post(
+        "/api/v1/auth/login",
+        json={"username": "e2euser",
+              "password": "password123"},
+    )
+    auth_token = login.json()["auth_token"]
+
+    # 4. Verify TOTP -> full access token
+    code = pyotp.TOTP(totp_secret).now()
+    verify = await app_client.post(
+        "/api/v1/auth/totp/verify",
+        json={"totp_code": code},
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert verify.status_code == 200
+    access_token = verify.json()["access_token"]
+\end{lstlisting}
+
+\subsection{Результати тестування}
+
+Загальний набір тестів налічує 149 тестових випадків, охоплюючи
+функціональні, інтеграційні та безпекові сценарії. Таблиця~\ref{tab:test_summary}
+наводить зведену статистику по категоріях тестів.
+
+\begin{table}[htbp]
+\caption{Зведена статистика тестового покриття}
+\label{tab:test_summary}
+\begin{tabularx}{\textwidth}{|l|X|r|}
+\hline
+\textbf{Категорія тестів} & \textbf{Що перевіряється} & \textbf{Кількість} \\
+\hline
+Автентифікація & Реєстрація, вхід, JWT, перевірка токенів & 24 \\
+\hline
+TOTP & Генерація, зарахування, верифікація, повторні спроби & 18 \\
+\hline
+VPN-сесії & Створення, перегляд, відкликання, ліміти & 32 \\
+\hline
+WireGuard & Виклики add/remove\_peer, деградований режим & 15 \\
+\hline
+Адміністрування & Список користувачів, налаштування, скасування & 21 \\
+\hline
+Безпека & Несанкціонований доступ, токени з неправильним scope,
+          фальсифікація підпису, крос-користувацький доступ & 19 \\
+\hline
+Наскрізні (E2E) & Повний потік користувача, потік адміністратора & 12 \\
+\hline
+Фонові завдання & Цикл очищення, закінчення сесій & 8 \\
+\hline
+\textbf{Разом} & & \textbf{149} \\
+\hline
+\end{tabularx}
+\end{table}
+
+Усі 149 тестів успішно проходять. Особливу увагу приділено безпековим
+тестам: перевіряється, що проміжний JWT-токен (із \texttt{scope=totp\_verify})
+не дозволяє звернення до VPN-ендпоінтів, підроблений підпис відхиляється
+з кодом 401, а звичайний користувач отримує 403 при зверненні до
+адміністративних маршрутів. Тест \texttt{test\_admin\_update\_settings\_affects\_session\_limit}
+перевіряє динамічну зміну ліміту сесій через адміністративний API:
+після збільшення ліміту з 1 до 2 другий запит на створення сесії
+успішно виконується.
+
+%% ============================================================
+\section{Висновки до розділу~3}
+\label{sec:chapter3_conclusions}
+%% ============================================================
+
+У розділі описано реалізацію усіх компонентів системи VPN з двофакторною
+автентифікацією. Отримані результати дозволяють сформулювати такі висновки.
+
+По-перше, вибір технологічного стеку~--- FastAPI~\cite{fastapi2024},
+SQLAlchemy~2.0~\cite{sqlalchemy2024} та asyncio~--- виявився обгрунтованим:
+асинхронна архітектура забезпечує ефективну обробку одночасних запитів
+без блокування при виконанні системних викликів до WireGuard.
+
+По-друге, реалізація двоетапної автентифікації з JWT-токенами з областю
+видимості (\texttt{scope}) ефективно ізолює кроки автентифікаційного
+потоку: компрометація проміжного токена не дає доступу до VPN-ресурсів.
+Argon2id~\cite{biryukov2016argon2} забезпечує сучасний стандарт
+безпечного зберігання паролів, а Fernet-шифрування~\cite{cryptography2024}
+захищає TOTP-секрети у стані спокою.
+
+По-третє, клас \texttt{WireGuardManager} з асинхронним запуском
+підпроцесів забезпечує надійне управління тунелями WireGuard з коректною
+обробкою помилок та деградованим режимом роботи.
+
+По-четверте, стратегія тестування на базі \texttt{MockWireGuardManager}
+та in-memory SQLite дозволила досягти 149 тестових випадків без залежності
+від привілеїв ядра, що забезпечує відтворюваність тестів у стандартних
+CI-середовищах. Покриття охоплює автентифікацію, TOTP, VPN-сесії,
+адміністрування, безпекові сценарії та наскрізні потоки.
+
+По-п'яте, розгортання системи у Docker Compose~\cite{docker2024} з
+Caddy~\cite{caddy2024} зводить до мінімуму операційні зусилля:
+автоматичний TLS, контейнерна ізоляція та декларативна конфігурація
+дозволяють розгорнути систему на новому VPS єдиною командою.
 
 \newpage

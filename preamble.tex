@@ -7,7 +7,8 @@
 \setotherlanguage{english}
 \setmainfont{Times New Roman}
 \setsansfont{Arial}
-\setmonofont{Courier New}
+\setmonofont[Script=Default,Scale=MatchLowercase]{Courier New}
+\newfontfamily\cyrillicfonttt[Scale=MatchLowercase]{Courier New}
 
 %% --- Геометрія сторінки ---
 \usepackage[
@@ -62,7 +63,8 @@
 \fancyhf{}
 \fancyhead[R]{\thepage}
 \renewcommand{\headrulewidth}{0pt}
-\setlength{\headheight}{15pt}
+\setlength{\headheight}{17pt}
+\addtolength{\topmargin}{-2pt}
 
 %% --- Таблиці ---
 \usepackage{booktabs}
@@ -77,7 +79,7 @@
 
 %% --- Діаграми (TikZ) ---
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc}
+\usetikzlibrary{arrows.meta,positioning,calc,backgrounds,fit}
 
 %% --- Підписи до рисунків і таблиць ---
 \usepackage{caption}
