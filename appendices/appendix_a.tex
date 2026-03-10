@@ -1,8 +1,54 @@
 \chapter{Вихідний код основних модулів системи}
 \label{appendix:source_code}
 
-% TODO: додати лістинги вихідного коду
+У цьому додатку наведено вихідний код ключових модулів розробленої системи.
+Лістинги~\ref{lst:app_wg_manager}--\ref{lst:app_caddyfile} охоплюють управління
+інтерфейсом WireGuard, логіку VPN-сесій, маршрутизатор автентифікації
+та конфігурацію середовища розгортання.
 
-Вихідний код розроблених модулів системи.
+%% ── WireGuard Manager ──────────────────────────────────────────────────────
+
+\lstinputlisting[
+  style=mystyle,
+  language=Python,
+  caption={Модуль управління інтерфейсом WireGuard (\texttt{wireguard/manager.py})},
+  label={lst:app_wg_manager}
+]{src/vpnservice/wireguard/manager.py}
+
+%% ── VPN Session Service ────────────────────────────────────────────────────
+
+\lstinputlisting[
+  style=mystyle,
+  language=Python,
+  caption={Бізнес-логіка управління VPN-сесіями (\texttt{vpn/service.py})},
+  label={lst:vpn_service}
+]{src/vpnservice/vpn/service.py}
+
+%% ── Auth API Router ────────────────────────────────────────────────────────
+
+\lstinputlisting[
+  style=mystyle,
+  language=Python,
+  caption={Маршрутизатор API автентифікації (\texttt{auth/router.py})},
+  label={lst:auth_router}
+]{src/vpnservice/auth/router.py}
+
+%% ── Docker Compose ─────────────────────────────────────────────────────────
+
+\lstinputlisting[
+  style=mystyle,
+  language={},
+  caption={Конфігурація контейнерного розгортання (\texttt{docker-compose.yml})},
+  label={lst:docker_compose}
+]{src/docker-compose.yml}
+
+%% ── Caddyfile ──────────────────────────────────────────────────────────────
+
+\lstinputlisting[
+  style=mystyle,
+  language={},
+  caption={Конфігурація зворотного проксі-сервера (\texttt{Caddyfile})},
+  label={lst:app_caddyfile}
+]{src/Caddyfile}
 
 \newpage
