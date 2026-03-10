@@ -103,24 +103,24 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 
 %% Зовнішні клієнти (ліворуч)
 \node[box, fill=blue!8] (cli) at (0,0) {CLI-клієнт\\(Docker)};
-\node[box, fill=blue!8] (wgclient) at (0,-2.5) {WireGuard\\(клієнт)};
+\node[box, fill=blue!8] (wgclient) at (0,-3) {WireGuard\\(клієнт)};
 
 %% Caddy (посередині)
-\node[box, fill=orange!15] (caddy) at (4.5,0) {Caddy\\(зворотний проксі\\TLS :443)};
+\node[box, fill=orange!15] (caddy) at (5,0) {Caddy\\(зворотний проксі\\TLS :443)};
 
 %% Сервер (праворуч)
-\node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm] (api) at (9,0) {API Server\\(FastAPI, :8000)};
+\node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm] (api) at (10.5,0) {API Server\\(FastAPI, :8000)};
 
 %% Внутрішні модулі сервера
-\node[module, fill=green!5] (mauth) at (7.8,-1.8) {auth\\totp};
-\node[module, fill=green!5] (msess) at (9.2,-1.8) {sessions\\tasks};
-\node[module, fill=green!5] (mwg) at (10.6,-1.8) {wireguard};
-
-%% WireGuard інтерфейс
-\node[box, fill=purple!10] (wg0) at (10.6,-3.5) {WireGuard\\interface (wg0)\\UDP :51820};
+\node[module, fill=green!5] (mauth) at (8.5,-2) {auth\\totp};
+\node[module, fill=green!5] (msess) at (10,-2) {sessions\\tasks};
+\node[module, fill=green!5] (mwg) at (11.5,-2) {wireguard};
 
 %% База даних
-\node[box, fill=yellow!15] (db) at (7.8,-3.5) {SQLite DB\\(WAL mode)};
+\node[box, fill=yellow!15] (db) at (7.5,-4.2) {SQLite DB\\(WAL mode)};
+
+%% WireGuard інтерфейс
+\node[box, fill=purple!10] (wg0) at (11.5,-4.2) {WireGuard\\interface (wg0)\\UDP :51820};
 
 %% З'єднання: CLI -> Caddy
 \draw[biarr] (cli) -- node[above, label]{HTTPS\\(:443)} (caddy);
@@ -140,8 +140,9 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 %% Модулі -> WireGuard
 \draw[arr] (mwg) -- (wg0);
 
-%% CLI -> WireGuard (тунель)
-\draw[biarr, dashed] (wgclient) -- node[right, label]{WireGuard\\тунель\\(UDP :51820)} (wg0);
+%% CLI -> WireGuard (тунель) — routed below DB
+\draw[biarr, dashed] (wgclient.south) -- ++(0,-2.5) -| (wg0.south)
+  node[pos=0.25, below, label]{WireGuard тунель (UDP :51820)};
 
 %% Рамка навколо серверних компонентів
 \begin{scope}[on background layer]
