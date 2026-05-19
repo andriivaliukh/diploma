@@ -377,6 +377,19 @@ async def _get_or_create_device(
     if device is not None:
         return device
 
+    existing = await db.execute(
+        select(Device).where(
+            Device.user_id == user.id,
+            Device.name == device_name,
+        )
+    )
+    existing_dev = existing.scalar_one_or_none()
+    if existing_dev is not None:
+        existing_dev.public_key = public_key
+        existing_dev.last_active_at = datetime.now(tz=timezone.utc)
+        await db.flush()
+        return existing_dev
+
     device = Device(user_id=user.id, name=device_name, public_key=public_key)
     db.add(device)
     await db.flush()

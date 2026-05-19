@@ -2,8 +2,6 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wireguard-tools iproute2 iptables \
- && update-alternatives --set iptables /usr/sbin/iptables-legacy \
- && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
