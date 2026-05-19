@@ -4,6 +4,9 @@ services:
     ports:
       - "443:443"
       - "80:80"
+    environment:
+      - VPN_DOMAIN=${VPN_DOMAIN:-localhost}
+      - TLS_MODE=${TLS_MODE:-internal}
     volumes:
       - caddy-data:/data
       - ./Caddyfile:/etc/caddy/Caddyfile
