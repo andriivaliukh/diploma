@@ -61,6 +61,21 @@ class WireGuardManager:
             await self._run("ip", "addr", "add", server_addr, "dev", self._settings.wg_interface)
 
         await self._run("ip", "link", "set", self._settings.wg_interface, "up")
+
+        iface = self._settings.wg_interface
+        await self._run(
+            "sh", "-c",
+            f"iptables -C FORWARD -i {iface} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i {iface} -j ACCEPT",
+        )
+        await self._run(
+            "sh", "-c",
+            f"iptables -C FORWARD -o {iface} -j ACCEPT 2>/dev/null || iptables -A FORWARD -o {iface} -j ACCEPT",
+        )
+        await self._run(
+            "sh", "-c",
+            "iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
+        )
+
         logger.info("WireGuard interface %s is up, public key: %s",
                     self._settings.wg_interface, self._server_public_key)
 

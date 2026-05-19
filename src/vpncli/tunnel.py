@@ -6,8 +6,8 @@ files, and controls tunnel lifecycle via wg-quick.
 # WireGuard requires root privileges and the NET_ADMIN capability.
 """
 
+import secrets
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -119,20 +119,9 @@ def bring_up_tunnel(config_content: str) -> Path:
     Raises:
         TunnelError: If wg-quick fails to bring up the interface.
     """
-    tmp_file = tempfile.NamedTemporaryFile(
-        suffix=".conf",
-        prefix="vpncli-",
-        dir="/tmp",
-        delete=False,
-        mode="w",
-    )
-    tmp_path = Path(tmp_file.name)
-    try:
-        tmp_file.write(config_content)
-        tmp_file.flush()
-    finally:
-        tmp_file.close()
-
+    iface = f"vpncli-{secrets.token_hex(3)}"
+    tmp_path = Path(f"/tmp/{iface}.conf")
+    tmp_path.write_text(config_content)
     tmp_path.chmod(0o600)
 
     try:

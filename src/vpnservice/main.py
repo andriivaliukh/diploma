@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     try:
         await wg.initialize()
     except Exception as exc:
-        logger.warning("WireGuard init failed (running without tunnel): %s", exc)
+        logger.exception("WireGuard init failed during lifespan (running without tunnel): %s", exc)
     set_wg_manager(wg)
     cleanup_task = start_cleanup_task(wg)
     yield

@@ -55,7 +55,7 @@ echo "=== Creating application directory ==="
 mkdir -p "$INSTALL_DIR/data"
 
 echo "=== Generating secrets ==="
-VPN_SECRET_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || openssl rand -base64 32)
+VPN_SECRET_KEY=$(python3 -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())")
 VPN_JWT_SECRET=$(openssl rand -base64 32)
 
 echo "=== Writing .env file ==="
