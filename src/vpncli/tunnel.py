@@ -105,44 +105,46 @@ def create_wg_config(
 
 
 def bring_up_tunnel(config_content: str) -> Path:
-    """Write a WireGuard config to a temp file and bring up the tunnel.
+    """Write a WireGuard config to /etc/wireguard and bring up the tunnel.
 
-    The temp file is NOT deleted by this function — the caller is
+    The config file is NOT deleted by this function — the caller is
     responsible for cleanup (and for calling bring_down_tunnel first).
 
     Args:
         config_content: The wg-quick configuration file content.
 
     Returns:
-        Path to the temporary config file (needed for bring_down_tunnel).
+        Path to the config file in /etc/wireguard (needed for bring_down_tunnel).
 
     Raises:
         TunnelError: If wg-quick fails to bring up the interface.
     """
     iface = f"vpncli-{secrets.token_hex(3)}"
-    tmp_path = Path(f"/tmp/{iface}.conf")
-    tmp_path.write_text(config_content)
-    tmp_path.chmod(0o600)
+    config_dir = Path("/etc/wireguard")
+    config_dir.mkdir(mode=0o700, exist_ok=True)
+    config_path = config_dir / f"{iface}.conf"
+    config_path.write_text(config_content)
+    config_path.chmod(0o600)
 
     try:
         subprocess.run(
-            ["wg-quick", "up", str(tmp_path)],
+            ["wg-quick", "up", str(config_path)],
             capture_output=True,
             text=True,
             check=True,
         )
     except FileNotFoundError as exc:
-        tmp_path.unlink(missing_ok=True)
+        config_path.unlink(missing_ok=True)
         raise TunnelError(
             "wg-quick not found. Install wireguard-tools."
         ) from exc
     except subprocess.CalledProcessError as exc:
-        tmp_path.unlink(missing_ok=True)
+        config_path.unlink(missing_ok=True)
         raise TunnelError(
             f"wg-quick up failed: {exc.stderr.strip()}"
         ) from exc
 
-    return tmp_path
+    return config_path
 
 
 def bring_down_tunnel(config_path: Path) -> None:
