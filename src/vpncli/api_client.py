@@ -78,7 +78,7 @@ class VPNAPIClient:
             password: Password (min 8 chars).
 
         Returns:
-            Dict with user_id, username, totp_uri, totp_secret, totp_qr_base64.
+            Dict with user_id, username, totp_uri, totp_secret, totp_qr_base64, auth_token.
 
         Raises:
             APIError: On 409 (username taken), 422 (validation), or other errors.

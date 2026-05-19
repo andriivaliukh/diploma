@@ -234,7 +234,7 @@ async def seed_admin_user(settings: Settings) -> None:
         totp_record = TOTPSecret(
             user_id=admin.id,
             encrypted_secret=encrypted_secret,
-            is_verified=False,
+            is_verified=True,
         )
         db.add(totp_record)
         await db.commit()

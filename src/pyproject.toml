@@ -13,21 +13,18 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0,<3",
     "aiosqlite>=0.20,<1",
     "alembic>=1.14,<2",
-    "argon2-cffi>=23.1,<24",
+    "argon2-cffi>=23.1,<25",
     "pyjwt>=2.9,<3",
     "pyotp>=2.9,<3",
     "qrcode[pil]>=8,<9",
-    "cryptography>=44,<45",
+    "cryptography>=44,<47",
     "pydantic-settings>=2.7,<3",
     "httpx>=0.28,<1",
+    "typer>=0.15,<1",
+    "rich>=13",
 ]
 
 [project.optional-dependencies]
-cli = [
-    "typer>=0.15,<1",
-    "httpx>=0.28,<1",
-    "rich>=13,<14",
-]
 dev = [
     "pytest>=8,<9",
     "pytest-asyncio>=0.24,<1",

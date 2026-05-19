@@ -85,6 +85,7 @@ def register_flow(
 
     totp_uri: str = result["totp_uri"]
     totp_secret: str = result["totp_secret"]
+    auth_token: str = result["auth_token"]
 
     console.print(
         Panel(
@@ -100,21 +101,6 @@ def register_flow(
         )
     )
 
-    console.print("Logging in to complete TOTP enrollment…")
-
-    try:
-        login_result = client.login(server, username, password)
-    except APIError as exc:
-        if exc.status_code == 403:
-            console.print(
-                "[yellow]Server requires TOTP verification before login is permitted.\n"
-                "Please complete enrollment manually then run 'vpncli login'.[/yellow]"
-            )
-            raise typer.Exit(1)
-        console.print(f"[bold red]Could not complete enrollment login: {exc}[/bold red]")
-        raise typer.Exit(1)
-
-    auth_token: str = login_result["auth_token"]
     totp_code = _prompt_totp()
 
     try:
