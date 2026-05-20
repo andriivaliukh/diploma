@@ -1,8 +1,10 @@
+import json
 import pytest
 from summarize import (
     parse_ping_rtts, compute_stats,
     parse_iperf3_sender_mbps, parse_mpstat_soft_pct,
     parse_udp_ramp, parse_pidstat_cpu_pct,
+    parse_iperf3_json_streams,
 )
 
 
@@ -283,3 +285,51 @@ def test_parse_pidstat_cpu_pct_handles_zero_cpu():
     ])
     pct = parse_pidstat_cpu_pct(output)
     assert pct == pytest.approx(0.0)
+
+
+def _make_iperf3_json_stream(bits_per_second):
+    return {"sender": {"socket": 5, "start": 0.0, "end": 10.0, "seconds": 10.0,
+                       "bytes": int(bits_per_second / 8 * 10),
+                       "bits_per_second": bits_per_second, "retransmits": 0}}
+
+
+IPERF3_JSON_4STREAM = json.dumps({
+    "start": {"test_start": {"protocol": "TCP", "num_streams": 4, "blksize": 131072}},
+    "end": {
+        "streams": [
+            _make_iperf3_json_stream(22100000.0),
+            _make_iperf3_json_stream(21800000.0),
+            _make_iperf3_json_stream(22000000.0),
+            _make_iperf3_json_stream(22000000.0),
+        ],
+        "sum_sent": {"start": 0.0, "end": 10.0, "seconds": 10.0,
+                     "bytes": 109875000, "bits_per_second": 87900000.0, "retransmits": 0},
+    },
+})
+
+IPERF3_JSON_1STREAM = json.dumps({
+    "start": {"test_start": {"protocol": "TCP", "num_streams": 1}},
+    "end": {
+        "streams": [_make_iperf3_json_stream(885000000.0)],
+        "sum_sent": {"bits_per_second": 885000000.0},
+    },
+})
+
+
+def test_parse_iperf3_json_streams_4stream():
+    result = parse_iperf3_json_streams(IPERF3_JSON_4STREAM)
+    assert len(result["per_stream"]) == 4
+    assert result["per_stream"] == pytest.approx([22.1, 21.8, 22.0, 22.0], rel=1e-3)
+    assert result["sum"] == pytest.approx(87.9, rel=1e-3)
+
+
+def test_parse_iperf3_json_streams_single_stream():
+    result = parse_iperf3_json_streams(IPERF3_JSON_1STREAM)
+    assert len(result["per_stream"]) == 1
+    assert result["per_stream"][0] == pytest.approx(885.0, rel=1e-3)
+    assert result["sum"] == pytest.approx(885.0, rel=1e-3)
+
+
+def test_parse_iperf3_json_streams_malformed_raises():
+    with pytest.raises(ValueError):
+        parse_iperf3_json_streams("not valid json {{{")
