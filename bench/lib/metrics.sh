@@ -16,8 +16,9 @@ run_lat_idle() {
 # ---------------------------------------------------------------------------
 
 run_tcp_t() {
-    echo "STUB: run_tcp_t not yet implemented" >&2
-    return 1
+    local duration=60
+    [[ "${BENCH_MODE:-measure}" == "smoke" ]] && duration=10
+    iperf3 -c "$SRV" -t "$duration" -P 1
 }
 
 # ---------------------------------------------------------------------------
@@ -47,12 +48,3 @@ run_udp() {
     return 1
 }
 
-# ---------------------------------------------------------------------------
-# onboard — scenario-specific first-tunnel-up timing (run once per scenario)
-# ---------------------------------------------------------------------------
-
-run_onboard() {
-    local scenario="$1"
-    echo "STUB: run_onboard $scenario not yet implemented" >&2
-    return 1
-}

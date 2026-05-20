@@ -31,6 +31,22 @@ chmod +x run.sh
 ./run.sh openvpn
 ```
 
+## Environment variables
+
+| Variable | Default | Effect |
+|---|---|---|
+| `BENCH_MODE` | `measure` | `smoke`: N=1, iperf3 `-t 10`, skip `lat_load` — fast end-to-end sanity check (~5 min/scenario). `measure`: full N=5, iperf3 `-t 60`. |
+| `BENCH_N` | `5` | Override run count (ignored when `BENCH_MODE=smoke`, which forces N=1). |
+| `BENCH_PYTHON3` | `python3` | Path to Python 3 interpreter (e.g. `/usr/bin/python3.11`). |
+
+```bash
+# Smoke run — fast sanity check for one scenario:
+BENCH_MODE=smoke ./run.sh wg-plain
+
+# Full run with explicit Python path:
+BENCH_PYTHON3=/usr/bin/python3.11 ./run.sh
+```
+
 ## Output
 
 | Path | Contents |

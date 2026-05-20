@@ -14,7 +14,9 @@ BENCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$BENCH_DIR/.." && pwd)"
 DATA_DIR="$REPO_DIR/data/benchmarks"
 RESULTS_CSV="$DATA_DIR/results.csv"
+BENCH_MODE="${BENCH_MODE:-measure}"
 N="${BENCH_N:-5}"
+[[ "$BENCH_MODE" == "smoke" ]] && N=1
 VPS_A="root@81.27.101.178"
 PYTHON3="${BENCH_PYTHON3:-python3}"
 
@@ -93,7 +95,19 @@ run_scenario() {
     fi
     CURRENT_SCENARIO="$scenario"
 
+    if [[ "$scenario" != "no-vpn" && -n "${ONBOARD_MS:-}" ]]; then
+        local ts
+        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf '%s,%s,onboard,1,%s,ms,%s,,,,1,\n' \
+            "$ts" "$scenario" "$ONBOARD_MS" "$ONBOARD_MS" >> "$RESULTS_CSV"
+        log "  $scenario / onboard: ${ONBOARD_MS}ms"
+    fi
+
     for metric in "${METRICS[@]}"; do
+        if [[ "$BENCH_MODE" == "smoke" && "$metric" == "lat_load" ]]; then
+            log "  $scenario / $metric: skipped in smoke mode"
+            continue
+        fi
         for run in $(seq 1 "$N"); do
             log "  $scenario / $metric / run $run"
             run_metric_safely "$scenario" "$metric" "$run"
@@ -103,10 +117,6 @@ run_scenario() {
     if [[ "$scenario" != "no-vpn" ]]; then
         rsync "${VPS_A}:/tmp/cpu-${scenario}-*.txt" "$DATA_DIR/" 2>/dev/null \
             || warn "no CPU capture files rsynced for $scenario"
-
-        if ! run_onboard "$scenario" >> "$RESULTS_CSV" 2>/dev/null; then
-            warn "onboard $scenario: stub or failed — skipping"
-        fi
     fi
 
     teardown_scenario "$scenario"

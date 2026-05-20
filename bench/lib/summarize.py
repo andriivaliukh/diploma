@@ -53,6 +53,42 @@ def compute_stats(values: list) -> dict:
     return {"mean": mean, "median": median, "p95": p95, "stddev": stddev, "n": n}
 
 
+def parse_iperf3_sender_mbps(text: str) -> float:
+    """Return sender Mbits/sec from iperf3 stdout (last sender line wins).
+
+    Works for single-stream (tcp_t) and multi-stream (tcp_p [SUM] line).
+    Raises ValueError if no sender line with a Mbits/sec value is found.
+    """
+    last_mbps = None
+    for line in text.splitlines():
+        if re.search(r'\bsender\b', line):
+            m = re.search(r'(\d+(?:\.\d+)?)\s+Mbits/sec', line)
+            if m:
+                last_mbps = float(m.group(1))
+    if last_mbps is None:
+        raise ValueError("No sender line with Mbits/sec found in iperf3 output")
+    return last_mbps
+
+
+def parse_mpstat_soft_pct(text: str) -> float:
+    """Return %soft from the 'Average: all' row of mpstat -P ALL output.
+
+    Anchors column position on the header line that contains 'CPU' and '%soft',
+    so it is robust to multi-CPU output (ignores per-CPU Average rows).
+    Raises ValueError if no such row is found.
+    """
+    soft_col = None
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts or parts[0] != "Average:":
+            continue
+        if len(parts) > 1 and parts[1] == "CPU" and "%soft" in parts:
+            soft_col = parts.index("%soft")
+        elif soft_col is not None and len(parts) > 1 and parts[1] == "all":
+            return float(parts[soft_col])
+    raise ValueError("No 'Average: all' row with %soft column found in mpstat output")
+
+
 def _ts_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -73,8 +109,23 @@ def summarize_lat_idle(raw_path: str, scenario: str, metric: str, run: int,
     ]
 
 
+def summarize_tcp_t(raw_path: str, scenario: str, metric: str, run: int,
+                    notes: str = "") -> list:
+    text = Path(raw_path).read_text()
+    mbps = parse_iperf3_sender_mbps(text)
+    stats = compute_stats([mbps])
+    return [
+        _ts_now(), scenario, metric, run,
+        f"{stats['median']:.3f}", "mbps",
+        f"{stats['median']:.3f}", f"{stats['p95']:.3f}",
+        f"{stats['stddev']:.3f}", f"{stats['mean']:.3f}",
+        stats["n"], notes,
+    ]
+
+
 _SUMMARIZERS = {
     "lat_idle": summarize_lat_idle,
+    "tcp_t": summarize_tcp_t,
 }
 
 

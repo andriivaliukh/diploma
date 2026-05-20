@@ -27,13 +27,39 @@ teardown_no_vpn() {
 # ---------------------------------------------------------------------------
 
 setup_wg_plain() {
-    echo "STUB: setup_wg_plain not yet implemented" >&2
-    return 1
+    wg-quick down wg-bench 2>/dev/null || true
+
+    local start_ns
+    start_ns=$(date +%s%N)
+
+    log "pre-flight [wg-plain]: bringing up wg-bench"
+    if ! wg-quick up wg-bench; then
+        die "wg-plain: wg-quick up wg-bench failed"
+    fi
+
+    # Trigger initial handshake; ignore failure (peer may not reply to first ping)
+    ping -c 1 -W 5 10.99.0.1 >/dev/null 2>&1 || true
+
+    local hs_ts now age
+    hs_ts=$(wg show wg-bench latest-handshakes | awk 'NR==1 {print $2}')
+    now=$(date +%s)
+    age=$(( now - ${hs_ts:-0} ))
+    if [[ ${hs_ts:-0} -eq 0 || $age -gt 60 ]]; then
+        wg-quick down wg-bench 2>/dev/null || true
+        die "wg-plain pre-flight failed: no fresh handshake (age=${age}s)"
+    fi
+
+    local end_ns
+    end_ns=$(date +%s%N)
+    ONBOARD_MS=$(( (end_ns - start_ns) / 1000000 ))
+    SRV="10.99.0.1"
+    export SRV ONBOARD_MS
+    log "wg-plain ready, SRV=$SRV, ONBOARD_MS=${ONBOARD_MS}ms"
 }
 
 teardown_wg_plain() {
-    echo "STUB: teardown_wg_plain not yet implemented" >&2
-    return 0
+    wg-quick down wg-bench 2>/dev/null || true
+    SRV=""
 }
 
 # ---------------------------------------------------------------------------
