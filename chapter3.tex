@@ -715,7 +715,7 @@ VPS-сервер UpCloud з Ubuntu~24.04, стек розгорнуто чере
 curl -s https://vpn.example.com/api/v1/health
 \end{lstlisting}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-01.png}
 \caption{Відповідь health-ендпоінту: status=healthy, wireguard=up}
@@ -737,13 +737,13 @@ curl -s https://vpn.example.com/api/v1/health
         підтвердження зарахування.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-02.png}
 \caption{Відповідь реєстрації користувача (HTTP 201): totp\_secret та qr\_code}
 \label{fig:func-02}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-03.png}
 \caption{Підтвердження TOTP-реєстрації (HTTP 200): success=true}
@@ -765,13 +765,13 @@ curl -s https://vpn.example.com/api/v1/health
         сервер повертає повноцінний \texttt{access\_token}.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-04.png}
 \caption{Відповідь логіну: requires\_totp=true з проміжним токеном}
 \label{fig:func-04}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-05.png}
 \caption{Отримання access\_token після TOTP-верифікації (expires\_in=86400)}
@@ -795,13 +795,13 @@ curl -s https://vpn.example.com/api/v1/health
   \item \texttt{wg show}~--- перевірка стану інтерфейсу.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-06.png}
 \caption{Створення VPN-сесії (HTTP 201): assigned\_ip та server\_public\_key}
 \label{fig:func-06}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-07.png}
 \caption{Вивід wg show: активний тунель, handshake та transfer counter}
@@ -822,13 +822,13 @@ curl -s https://vpn.example.com/api/v1/health
         повертає оригінальну IP-адресу клієнта.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-08.png}
 \caption{curl ifconfig.me з увімкненим тунелем: IP відповідає VPN-серверу}
 \label{fig:func-08}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-09.png}
 \caption{curl ifconfig.me після вимкнення тунелю: IP повертається до оригінального}
@@ -851,13 +851,13 @@ curl -s https://vpn.example.com/api/v1/health
         обраної сесії.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-10.png}
 \caption{Список користувачів через адмін-ендпоінт (GET /admin/users)}
 \label{fig:func-10}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-11.png}
 \caption{Примусове відкликання сесії (DELETE /admin/sessions): status=revoked}
@@ -880,19 +880,19 @@ curl -s https://vpn.example.com/api/v1/health
         \texttt{Authorization}~--- очікується HTTP~401.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-12.png}
 \caption{Відхилення неправильного TOTP-коду (HTTP 400)}
 \label{fig:func-12}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-13.png}
 \caption{Відмова доступу не-адміну до /admin/users (HTTP 403)}
 \label{fig:func-13}
 \end{figure}
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/func-14.png}
 \caption{Відмова запиту без токена Authorization (HTTP 401)}
