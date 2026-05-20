@@ -859,6 +859,191 @@ curl -s https://vpn.example.com/api/v1/health
 \end{table}
 
 %% ============================================================
+\section{Порівняльний аналіз продуктивності}
+\label{sec:perf}
+%% ============================================================
+
+\subsection{Методологія}
+\label{subsec:perf_methodology}
+
+Метою порівняльного аналізу є оцінка продуктивності розробленої системи VPN
+відносно еталонних реалізацій протоколу на однакову апаратну платформу.
+Виміри охоплюють три типи сценаріїв: (1)~затримка у стані спокою,
+(2)~пропускна здатність TCP та (3)~додаткове навантаження на CPU сервера.
+
+Для кожного сценарію виконується $N=5$ повторень. Показник уведення в
+тунель (\textit{onboarding}) відповідає визначенню з розділу~3.6
+(час від початку команди до отримання першої ICMP-відповіді, з попередньо
+завантаженим токеном). Проміжки між повтореннями~--- не менше 10 с для
+уникнення теплових ефектів.
+
+Кожен стек вимірюється ізольовано: одночасно активний лише один тунельний
+рівень. Усі стеки використовують стандартні конфігурації (без ручного
+налаштування MTU, GSO чи crypto-параметрів).
+
+\subsection{Конфігурація випробувального стенду}
+\label{subsec:perf_setup}
+
+\begin{table}[htbp]\centering
+\caption{Параметри вузлів випробувального стенду}
+\label{tab:perf_testbed}
+\begin{tabularx}{\textwidth}{|l|X|X|}\hline
+\textbf{Параметр} & \textbf{VPS~A (сервер)} & \textbf{VPS~B (клієнт)} \\\hline
+Провайдер / регіон & UpCloud, PL-WAW1 & UpCloud, DE-FRA1 \\\hline
+IP-адреса & 81.27.101.178 & 94.237.94.30 \\\hline
+ОС & Ubuntu Server 26.04 LTS (Resolute Raccoon) & Ubuntu Server 26.04 LTS (Resolute Raccoon) \\\hline
+Ядро & 7.0.0-14 & 7.0.0-14 \\\hline
+Ресурси & 1~vCPU / 2~ГБ / 20~ГБ & 1~vCPU / 2~ГБ / 20~ГБ \\\hline
+Виміряна RTT & \multicolumn{2}{c|}{23{,}94~мс ± 0{,}06~мс (медіана, N=100)} \\\hline
+\end{tabularx}\end{table}
+
+Реалізація WireGuard на обох вузлах~--- ядерний модуль
+(\texttt{wireguard.ko}); відсутність userspace-процесу \texttt{wireguard-go}
+перевірено командою \texttt{pgrep -a wireguard-go} (очікуваний результат~---
+порожній). WireGuard прослуховує порт~51821 (окремо від порту~51820, що
+використовується розробленою системою). OpenVPN налаштовано у режимі
+статичного ключа з шифруванням AES-256-GCM, UDP-порт~1194
+\cite{openvpn2024}. Вимірювання виконувались утилітою iperf3
+\cite{iperf3} із VPS~B як клієнта та VPS~A як сервера; навантаження на CPU
+сервера фіксувалось командою \texttt{mpstat} пакету sysstat \cite{mpstat_sysstat}.
+
+\subsection{Результати}
+\label{subsec:perf_results}
+
+\begin{table}[htbp]\centering
+\caption{Затримка (мс) без навантаження, N=5}
+\label{tab:perf_lat_idle}
+\begin{tabularx}{\textwidth}{|l|X|X|X|X|}\hline
+\textbf{Сценарій} & \textbf{Середнє ± СКВ} & \textbf{Медіана} & \textbf{p95} & \textbf{Примітка} \\\hline
+Plain WG (ядро)       & \TODO{} & \TODO{} & \TODO{} & \\\hline
+Ця система            & \TODO{} & \TODO{} & \TODO{} & \\\hline
+OpenVPN (AES-256-GCM) & \TODO{} & \TODO{} & \TODO{} & \\\hline
+\end{tabularx}\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Затримка (мс) під навантаженням, N=5}
+\label{tab:perf_lat_load}
+\begin{tabularx}{\textwidth}{|l|X|X|X|X|}\hline
+\textbf{Сценарій} & \textbf{Середнє ± СКВ} & \textbf{Медіана} & \textbf{p95} & \textbf{Буферний bloat} \\\hline
+Plain WG (ядро)       & \TODO{} & \TODO{} & \TODO{} & \TODO{} \\\hline
+Ця система            & \TODO{} & \TODO{} & \TODO{} & \TODO{} \\\hline
+OpenVPN (AES-256-GCM) & \TODO{} & \TODO{} & \TODO{} & \TODO{} \\\hline
+\end{tabularx}\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Пропускна здатність TCP (Мбіт/с), N=5, iperf3 60~с}
+\label{tab:perf_tcp_t}
+\begin{tabularx}{\textwidth}{|l|X|X|X|X|}\hline
+\textbf{Сценарій} & \textbf{Одиночний потік} & \textbf{4 потоки (SUM)} & \textbf{СКВ} & \textbf{Примітка} \\\hline
+Plain WG (ядро)       & \TODO{} & \TODO{} & \TODO{} & \\\hline
+Ця система            & \TODO{} & \TODO{} & \TODO{} & \\\hline
+OpenVPN (AES-256-GCM) & \TODO{} & \TODO{} & \TODO{} & \\\hline
+\end{tabularx}\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Стійка UDP-пропускна здатність (Мбіт/с), N=5}
+\label{tab:perf_udp}
+\begin{tabularx}{\textwidth}{|l|X|X|}\hline
+\textbf{Сценарій} & \textbf{Максимальна швидкість (втрати < 1\,\%)} & \textbf{Примітка} \\\hline
+Plain WG (ядро)       & \TODO{} & \\\hline
+Ця система            & \TODO{} & \\\hline
+OpenVPN (AES-256-GCM) & \TODO{} & \\\hline
+\end{tabularx}\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Завантаження CPU сервера (\%) під час TCP-тесту, N=5}
+\label{tab:perf_cpu}
+\begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
+\textbf{Сценарій} & \textbf{Середній \%soft (WG/ця система)} & \textbf{Середній \%CPU (OpenVPN)} & \textbf{Примітка} \\\hline
+Plain WG (ядро) & \TODO{} & --- & mpstat \\\hline
+Ця система      & \TODO{} & --- & mpstat \\\hline
+OpenVPN (AES-256-GCM) & --- & \TODO{} & pidstat \\\hline
+\end{tabularx}\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Час введення у тунель (онбординг, мс), N=5}
+\label{tab:perf_onboard}
+\begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
+\textbf{Сценарій} & \textbf{Середнє ± СКВ} & \textbf{Медіана} & \textbf{Примітка} \\\hline
+Plain WG (ядро)       & \TODO{} & \TODO{} & \texttt{wg-quick up} + ping-цикл \\\hline
+Ця система            & \TODO{} & \TODO{} & \texttt{vpncli connect -{}-emit-timings} \\\hline
+OpenVPN (AES-256-GCM) & \TODO{} & \TODO{} & \texttt{openvpn -{}-daemon} + ping-цикл \\\hline
+\end{tabularx}\end{table}
+
+\subsection{Обговорення}
+\label{subsec:perf_discussion}
+
+Ця система побудована поверх ядерного WireGuard і не вносить власного
+шифрувального рівня в канал даних. Тому очікується, що показники затримки
+та пропускної здатності TCP будуть статистично еквівалентними показникам
+чистого WireGuard (у межах шуму апаратного стенду), що узгоджується з
+висновками~\cite{mdpi2025wgopenvpn,donenfeld2017wireguard}.
+
+Превага протоколу WireGuard у пропускній здатності над OpenVPN пояснюється
+ядерною реалізацією (менше копіювань між просторами ядра та користувача),
+підтримкою GSO/TSO починаючи з ядра~6.2, а також алгоритмом
+ChaCha20-Poly1305 із апаратним прискоренням на процесорах ARM та x86 (CLMUL).
+OpenVPN у режимі статичного ключа з AES-256-GCM уникає TLS-накладних витрат
+на пакет, тому результати потрібно розглядати як верхню межу для OpenVPN
+(реальне PKI-розгортання додає накладні витрати на рукостискання).
+
+Показник онбордингу розробленої системи включає цикл HTTP-автентифікації
+(пароль + TOTP → JWT) та створення WireGuard-сесії через API, що додає
+кілька сотень мілісекунд до часу \texttt{wg-quick up}; точні значення
+наведено у табл.~\ref{tab:perf_onboard}.
+
+\subsection{Обмеження}
+\label{subsec:perf_caveats}
+
+\begin{enumerate}
+  \item \textbf{Апаратна стеля.} Обидва вузли~--- спільно орендовані VPS
+        (1~vCPU / 2~ГБ); абсолютні числа залежать від моментального
+        навантаження гіпервізора і не є відтворюваними на іншому обладнанні.
+
+  \item \textbf{Один регіон.} Вимірювання виконано між регіонами PL-WAW1 та
+        DE-FRA1 (виміряна RTT 23{,}94~мс ± 0{,}06~мс); результати можуть
+        відрізнятись в інших топологіях мережі.
+
+  \item \textbf{Один клієнт.} Одночасно до сервера підключений лише один
+        клієнт; поведінка під конкурентним навантаженням не досліджувалась.
+
+  \item \textbf{Стандартні мережеві параметри.} Не виконувалось ручне
+        налаштування MTU, GSO, розміру черг або crypto-параметрів; усі
+        стеки використовують параметри за замовчуванням (MTU~WG~1420,
+        OpenVPN~1500).
+
+  \item \textbf{Асиметрія крипто-наборів.} WireGuard та ця система
+        використовують ChaCha20-Poly1305/Curve25519; OpenVPN налаштовано з
+        AES-256-GCM у режимі статичного ключа; IPsec (якщо вимірюється)~---
+        AES-256-GCM-IKEv2 \cite{rfc7296}. Пряме порівняння числових
+        результатів можливе лише за рівних умов.
+
+  \item \textbf{Реалізація WireGuard.} На обох вузлах підтверджено ядерний
+        WireGuard під управлінням Ubuntu~26.04~LTS (Resolute Raccoon),
+        ядро~7.0.0-14, без userspace-процесу \texttt{wireguard-go}. Результати
+        можуть відрізнятись на ядрах нижче~6.2 (відсутня підтримка GSO/TSO
+        для WireGuard).
+
+  \item \textbf{Режим OpenVPN.} OpenVPN вимірюється у режимі статичного
+        ключа (deprecated у OpenVPN~2.6, але стабільний). PKI/TLS-режим
+        потенційно демонструє нижчу пропускну здатність через додаткові
+        TLS-накладні витрати на пакет.
+
+  \item \textbf{Версія ядра та ОС.} Стенд використовує Ubuntu~26.04
+        (ядро~7.0) на обох вузлах. Результати можуть відрізнятись на
+        старих ядрах, зокрема до~6.2, де відсутня підтримка WireGuard
+        GSO/TSO.
+
+  \item \textbf{Область охоплення клієнтського ОС (rev~4).} Показники
+        онбордингу та всі вимірювання площини даних отримані з
+        \textbf{Linux-клієнта} (VPS~B, Ubuntu~26.04 / ядро~7.0). Кодова
+        база vpncli спільна з macOS, але специфічну поведінку macOS
+        (Network Extension, \texttt{utun}-драйвер) у цій роботі не
+        тестовано. Результати характеризують Linux-шлях клієнта;
+        крос-платформна валідація є темою майбутніх досліджень.
+\end{enumerate}
+
+%% ============================================================
 \section{Висновки до розділу~3}
 \label{sec:chapter3_conclusions}
 %% ============================================================
