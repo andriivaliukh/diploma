@@ -1,5 +1,9 @@
 import pytest
-from summarize import parse_ping_rtts, compute_stats, parse_iperf3_sender_mbps, parse_mpstat_soft_pct
+from summarize import (
+    parse_ping_rtts, compute_stats,
+    parse_iperf3_sender_mbps, parse_mpstat_soft_pct,
+    parse_udp_ramp,
+)
 
 
 def make_ping_output(rtts):
@@ -174,3 +178,65 @@ def test_parse_mpstat_soft_pct_returns_float():
 def test_parse_mpstat_soft_pct_raises_if_no_average_block():
     with pytest.raises(ValueError):
         parse_mpstat_soft_pct(MPSTAT_NO_AVERAGE)
+
+
+def make_iperf3_udp_band(target_mbps, rx_mbps, loss_pct):
+    total = 100000
+    lost = int(total * loss_pct / 100)
+    return "\n".join([
+        "Connecting to host 10.99.0.1, port 5201",
+        "[ ID] Interval           Transfer     Bitrate         Total Datagrams",
+        f"[  5]   0.00-30.00  sec  1.00 GBytes  {target_mbps:.1f} Mbits/sec  0.000 ms  0/{total} (0%)          sender",
+        f"[  5]   0.00-30.13  sec  1.00 GBytes  {rx_mbps:.1f} Mbits/sec  0.043 ms  {lost}/{total} ({loss_pct:.1f}%)  receiver",
+        "",
+        "iperf Done.",
+    ])
+
+
+IPERF3_UDP_RAMP_LOSS_AT_400M = "\n".join([
+    make_iperf3_udp_band(50.0, 49.8, 0.0),
+    make_iperf3_udp_band(100.0, 99.6, 0.0),
+    make_iperf3_udp_band(200.0, 198.7, 0.0),
+    make_iperf3_udp_band(400.0, 344.0, 13.8),
+])
+
+IPERF3_UDP_RAMP_LOSS_AT_FIRST_STEP = make_iperf3_udp_band(50.0, 35.0, 15.0)
+
+IPERF3_UDP_RAMP_NO_LOSS = "\n".join([
+    make_iperf3_udp_band(50.0, 49.8, 0.0),
+    make_iperf3_udp_band(100.0, 99.6, 0.0),
+    make_iperf3_udp_band(200.0, 198.7, 0.0),
+    make_iperf3_udp_band(400.0, 397.2, 0.0),
+    make_iperf3_udp_band(800.0, 793.5, 0.0),
+])
+
+
+def test_parse_udp_ramp_returns_last_clean_rate():
+    rate, note = parse_udp_ramp(IPERF3_UDP_RAMP_LOSS_AT_400M)
+    assert rate == pytest.approx(198.7)
+    assert note == ""
+
+
+def test_parse_udp_ramp_first_step_lossy():
+    rate, note = parse_udp_ramp(IPERF3_UDP_RAMP_LOSS_AT_FIRST_STEP)
+    assert rate == pytest.approx(0.0)
+    assert note == "first-step-lossy"
+
+
+def test_parse_udp_ramp_no_loss_returns_last_rate():
+    rate, note = parse_udp_ramp(IPERF3_UDP_RAMP_NO_LOSS)
+    assert rate == pytest.approx(793.5)
+    assert note == "no-loss-at-top"
+
+
+def test_parse_udp_ramp_returns_tuple():
+    result = parse_udp_ramp(IPERF3_UDP_RAMP_LOSS_AT_400M)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+
+
+def test_parse_udp_ramp_exactly_one_pct_is_clean():
+    band = make_iperf3_udp_band(100.0, 99.0, 1.0)
+    rate, note = parse_udp_ramp(band)
+    assert rate == pytest.approx(99.0)
+    assert note == "no-loss-at-top"
