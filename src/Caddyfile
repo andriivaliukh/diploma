@@ -1,8 +1,8 @@
 {
+    email andrii.valiukh@datarobot.com
     default_sni {$VPN_DOMAIN:localhost}
 }
 
 {$VPN_DOMAIN:localhost} {
     reverse_proxy vpn-server:8000
-    tls {$TLS_MODE:internal}
 }
