@@ -64,7 +64,56 @@ teardown_wg_plain() {
 
 # ---------------------------------------------------------------------------
 # wg-2fa — this thesis's stack (WG + 2FA via vpncli)
+#
+# Architecture note: the vpncli VPN server runs inside a Docker container on
+# VPS A (vpnservice-vpn-server-1).  wg0 (10.10.0.1/24) lives inside that
+# container, not on the host.  The bench-side iperf3 server that works for
+# wg-plain (host, 10.99.0.1) is therefore unreachable from the wg-2fa tunnel
+# because port 5201 is not exposed by Docker.  Fix: copy the host iperf3 binary
+# into the container and start it there for the duration of the bench run.
+# See architect-1/observations.md for the §3.10 methodology footnote.
 # ---------------------------------------------------------------------------
+
+_setup_container_iperf3() {
+    local container="vpnservice-vpn-server-1"
+
+    ssh "$VPS_A" "docker inspect '$container' >/dev/null 2>&1" \
+        || die "wg-2fa: container '$container' not running on VPS A (check docker ps)"
+
+    # docker cp approach was attempted but the container (Debian 13) is missing
+    # libiperf.so.0 and libsctp.so.1 required by the host binary.  Use apt-get
+    # install instead; the Debian apt cache is pre-warmed so this takes ~2-3 s on
+    # the first run and is a no-op on subsequent runs (packages stay installed
+    # for the lifetime of the container).
+    ssh "$VPS_A" "docker exec '$container' apt-get install -y -q iperf3 2>/dev/null" \
+        || die "wg-2fa: apt-get install iperf3 in container failed"
+
+    # Start server; write PID to file so teardown can kill it without pkill/pgrep
+    # (neither procps tool is in the slim Debian image).
+    ssh "$VPS_A" "docker exec '$container' sh -c \
+        'iperf3 -s --logfile /tmp/iperf3-bench.log & echo \$! > /tmp/iperf3-bench.pid'"
+
+    sleep 0.5
+
+    # Listen probe via bash /dev/tcp (works without netstat/ss on Debian slim).
+    if ! ssh "$VPS_A" "docker exec '$container' bash -c \
+            'timeout 2 bash -c \"echo > /dev/tcp/127.0.0.1/5201\" 2>/dev/null'"; then
+        _teardown_container_iperf3
+        die "wg-2fa: iperf3 not listening on :5201 in container after start"
+    fi
+
+    log "wg-2fa: iperf3 listening on container:5201 (10.10.0.1:5201)"
+}
+
+_teardown_container_iperf3() {
+    local container="vpnservice-vpn-server-1"
+    if ssh "$VPS_A" "docker inspect '$container' >/dev/null 2>&1" 2>/dev/null; then
+        ssh "$VPS_A" "docker exec '$container' sh -c \
+            'kill \$(cat /tmp/iperf3-bench.pid 2>/dev/null) 2>/dev/null || true; \
+             rm -f /tmp/iperf3-bench.pid'" \
+            2>/dev/null || true
+    fi
+}
 
 setup_wg_2fa() {
     if [[ -n "${WG2FA_PID:-}" ]]; then
@@ -73,7 +122,12 @@ setup_wg_2fa() {
         unset WG2FA_PID
     fi
 
-    local user="bench-user-$(date +%s)"
+    local vpncli_bin="${VPNCLI:-$(command -v vpncli 2>/dev/null || echo /opt/vpncli/.venv/bin/vpncli)}"
+    if [[ ! -x "$vpncli_bin" ]]; then
+        die "wg-2fa: vpncli not found at $vpncli_bin (set VPNCLI= to override)"
+    fi
+
+    local user="benchuser$(date +%s)"
     local pass
     pass="$(openssl rand -hex 16)"
     local server="${VPN_SERVER:-https://vpn.loreo.xyz}"
@@ -87,19 +141,19 @@ setup_wg_2fa() {
     # acceptable trade-off for this bench scenario.
     log "wg-2fa: registering ${user}"
     local secret
-    secret=$(vpncli register --server "$server" --username "$user" --password "$pass" --auto-totp 2>&1 >/dev/null \
+    secret=$("$vpncli_bin" register --server "$server" --username "$user" --password "$pass" --auto-totp 2>&1 >/dev/null \
                  | grep -oE '^TOTP_SECRET=[A-Z2-7]+$' | head -1 | cut -d= -f2)
     if [[ -z "$secret" ]]; then
         die "wg-2fa: vpncli register failed (no TOTP_SECRET= line on stderr)"
     fi
 
     log "wg-2fa: logging in"
-    if ! vpncli login --server "$server" --username "$user" --password "$pass" --totp-secret "$secret"; then
+    if ! "$vpncli_bin" login --server "$server" --username "$user" --password "$pass" --totp-secret "$secret"; then
         die "wg-2fa: vpncli login failed"
     fi
 
     log "wg-2fa: connecting tunnel"
-    vpncli connect --server "$server" &
+    "$vpncli_bin" connect --server "$server" &
     WG2FA_PID=$!
 
     local i
@@ -117,11 +171,25 @@ setup_wg_2fa() {
         die "wg-2fa pre-flight failed: no 10.10.0.x addr after 10s"
     fi
 
-    if ! ping -c 1 -W 5 10.10.0.1 >/dev/null 2>&1; then
+    local wg_iface
+    wg_iface=$(ip -o link show 2>/dev/null | awk -F': ' '/vpncli-/{print $2}' | head -1)
+    if [[ -n "$wg_iface" ]]; then
+        ip route replace 10.10.0.0/24 dev "$wg_iface" 2>/dev/null || true
+    fi
+
+    local j
+    for j in $(seq 1 10); do
+        if ping -c 1 -W 2 10.10.0.1 >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.5
+    done
+
+    if ! ping -c 1 -W 2 10.10.0.1 >/dev/null 2>&1; then
         kill -TERM "$WG2FA_PID" 2>/dev/null || true
         wait "$WG2FA_PID" 2>/dev/null || true
         unset WG2FA_PID
-        die "wg-2fa pre-flight failed: cannot ping 10.10.0.1"
+        die "wg-2fa pre-flight failed: cannot ping 10.10.0.1 after retries"
     fi
 
     local end_ns
@@ -131,6 +199,12 @@ setup_wg_2fa() {
     export SRV ONBOARD_MS WG2FA_PID
 
     log "wg-2fa ready, SRV=$SRV, ONBOARD_MS=${ONBOARD_MS}ms (user=$user)"
+
+    # Deploy iperf3 into the VPN container on VPS A.  wg0 (10.10.0.1) lives
+    # inside Docker so the host iperf3 server is unreachable from this tunnel;
+    # we start a per-run server inside the container instead.  ONBOARD_MS is
+    # already recorded above so this step does not inflate the onboard metric.
+    _setup_container_iperf3
 }
 
 teardown_wg_2fa() {
@@ -140,11 +214,17 @@ teardown_wg_2fa() {
         unset WG2FA_PID
     fi
 
-    local iface
-    for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | sort -u); do
-        if [[ "$iface" =~ ^wg- ]] && [[ "$iface" != "wg-bench" ]]; then
-            ip link delete "$iface" 2>/dev/null || true
-        fi
+    _teardown_container_iperf3
+
+    ip route del 10.10.0.0/24 2>/dev/null || true
+
+    local conf
+    for conf in /etc/wireguard/vpncli-*.conf; do
+        [[ -f "$conf" ]] || continue
+        local iface="${conf%.conf}"
+        iface="${iface##*/}"
+        wg-quick down "$conf" 2>/dev/null || true
+        rm -f "$conf" 2>/dev/null || true
     done
 
     SRV=""
