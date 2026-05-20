@@ -49,6 +49,16 @@ _INSECURE_HELP = "Disable TLS certificate verification (for self-signed certs)."
 def register(
     server: str = typer.Option(..., "--server", help="VPN server base URL."),
     username: str = typer.Option(..., "--username", help="Desired username."),
+    password: Optional[str] = typer.Option(
+        None, "--password",
+        help="Skip interactive prompt; supply password directly. "
+             "Visible in process table; intended for bench/test use only.",
+    ),
+    auto_totp: bool = typer.Option(
+        False, "--auto-totp",
+        help="Skip interactive TOTP prompt; compute first code from server-returned secret. "
+             "Echoes 'TOTP_SECRET=<base32>' to stderr. Bench/test use only.",
+    ),
     insecure: bool = typer.Option(False, "--insecure", help=_INSECURE_HELP),
 ) -> None:
     """Register a new user account and enroll TOTP.
@@ -59,7 +69,8 @@ def register(
     """
     client = VPNAPIClient(verify_ssl=not insecure)
     try:
-        register_flow(client, server.rstrip("/"), username)
+        register_flow(client, server.rstrip("/"), username,
+                      password=password, auto_totp=auto_totp)
     except SystemExit:
         raise
     except Exception as exc:
@@ -76,6 +87,16 @@ def register(
 def login(
     server: str = typer.Option(..., "--server", help="VPN server base URL."),
     username: str = typer.Option(..., "--username", help="Username."),
+    password: Optional[str] = typer.Option(
+        None, "--password",
+        help="Skip interactive prompt; supply password directly. "
+             "Visible in process table; intended for bench/test use only.",
+    ),
+    totp_secret: Optional[str] = typer.Option(
+        None, "--totp-secret",
+        help="Skip interactive TOTP prompt; compute current code from this base32 secret. "
+             "Bench/test use only.",
+    ),
     insecure: bool = typer.Option(False, "--insecure", help=_INSECURE_HELP),
 ) -> None:
     """Log in and save an access token locally.
@@ -85,7 +106,8 @@ def login(
     """
     client = VPNAPIClient(verify_ssl=not insecure)
     try:
-        login_flow(client, server.rstrip("/"), username)
+        login_flow(client, server.rstrip("/"), username,
+                   password=password, totp_secret=totp_secret)
     except SystemExit:
         raise
     except Exception as exc:

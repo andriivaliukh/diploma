@@ -5,6 +5,7 @@ user for passwords and TOTP codes and persisting the resulting token.
 """
 
 import getpass
+import sys
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -18,6 +19,24 @@ from vpncli.config import load_token, save_token
 
 
 console = Console()
+
+
+def _compute_totp_from_secret(secret_b32: str, t: Optional[float] = None) -> str:
+    """RFC 6238 TOTP code (6-digit, 30s period, SHA-1)."""
+    import base64
+    import hashlib
+    import hmac
+    import struct
+    import time
+    if t is None:
+        t = time.time()
+    counter = int(t / 30)
+    counter_bytes = struct.pack(">Q", counter)
+    secret_bytes = base64.b32decode(secret_b32.replace(" ", "").upper())
+    digest = hmac.new(secret_bytes, counter_bytes, hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    code = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return f"{code % 1000000:06d}"
 
 
 def _prompt_password(prompt: str = "Password") -> str:
@@ -45,30 +64,15 @@ def register_flow(
     client: VPNAPIClient,
     server: str,
     username: str,
+    password: Optional[str] = None,
+    auto_totp: bool = False,
 ) -> None:
-    """Run the interactive user registration flow.
-
-    Steps:
-    1. Prompt for password (with confirmation).
-    2. Call the register API endpoint.
-    3. Display the TOTP enrollment URI for the authenticator app.
-    4. Perform a login to obtain an intermediate auth token.
-    5. Prompt for TOTP code and verify enrollment.
-
-    Args:
-        client: A configured VPNAPIClient instance.
-        server: Base URL of the VPN server.
-        username: Desired username for the new account.
-
-    Raises:
-        typer.Exit: On unrecoverable errors (bad input, server errors).
-    """
-    password = _prompt_password("Password")
-    password_confirm = _prompt_password("Confirm password")
-
-    if password != password_confirm:
-        console.print("[bold red]Passwords do not match.[/bold red]")
-        raise typer.Exit(1)
+    if password is None:
+        password = _prompt_password("Password")
+        password_confirm = _prompt_password("Confirm password")
+        if password != password_confirm:
+            console.print("[bold red]Passwords do not match.[/bold red]")
+            raise typer.Exit(1)
 
     console.print(f"Registering user [bold]{username}[/bold] on {server}…")
 
@@ -87,21 +91,37 @@ def register_flow(
     totp_secret: str = result["totp_secret"]
     auth_token: str = result["auth_token"]
 
-    console.print(
-        Panel(
-            Text.from_markup(
-                "[bold green]Account created![/bold green]\n\n"
-                "Scan this URI in your authenticator app:\n\n"
-                f"[cyan]{totp_uri}[/cyan]\n\n"
-                "Or enter the secret manually:\n"
-                f"[yellow]{totp_secret}[/yellow]"
-            ),
-            title="TOTP Enrollment",
-            border_style="green",
+    if auto_totp:
+        print(f"TOTP_SECRET={totp_secret}", file=sys.stderr, flush=True)
+        console.print(
+            Panel(
+                Text.from_markup(
+                    "[bold green]Account created![/bold green]\n\n"
+                    "Scan this URI in your authenticator app:\n\n"
+                    f"[cyan]{totp_uri}[/cyan]\n\n"
+                    "Or enter the secret manually:\n"
+                    f"[yellow]{totp_secret}[/yellow]"
+                ),
+                title="TOTP Enrollment",
+                border_style="green",
+            )
         )
-    )
-
-    totp_code = _prompt_totp()
+        totp_code = _compute_totp_from_secret(totp_secret)
+    else:
+        console.print(
+            Panel(
+                Text.from_markup(
+                    "[bold green]Account created![/bold green]\n\n"
+                    "Scan this URI in your authenticator app:\n\n"
+                    f"[cyan]{totp_uri}[/cyan]\n\n"
+                    "Or enter the secret manually:\n"
+                    f"[yellow]{totp_secret}[/yellow]"
+                ),
+                title="TOTP Enrollment",
+                border_style="green",
+            )
+        )
+        totp_code = _prompt_totp()
 
     try:
         client.verify_totp(server, auth_token, totp_code)
@@ -118,28 +138,11 @@ def login_flow(
     client: VPNAPIClient,
     server: str,
     username: str,
+    password: Optional[str] = None,
+    totp_secret: Optional[str] = None,
 ) -> str:
-    """Run the interactive login flow and return a valid access token.
-
-    Steps:
-    1. Prompt for password.
-    2. Call the login API endpoint to obtain an intermediate auth token.
-    3. Prompt for TOTP code.
-    4. Verify TOTP to obtain a full-access token.
-    5. Persist the token to ~/.vpncli/tokens.json.
-
-    Args:
-        client: A configured VPNAPIClient instance.
-        server: Base URL of the VPN server.
-        username: The account username.
-
-    Returns:
-        The full-access JWT string.
-
-    Raises:
-        typer.Exit: On authentication failures.
-    """
-    password = _prompt_password()
+    if password is None:
+        password = _prompt_password()
 
     console.print(f"Logging in as [bold]{username}[/bold] on {server}…")
 
@@ -155,7 +158,10 @@ def login_flow(
         raise typer.Exit(1)
 
     auth_token: str = login_result["auth_token"]
-    totp_code = _prompt_totp()
+    if totp_secret is not None:
+        totp_code = _compute_totp_from_secret(totp_secret)
+    else:
+        totp_code = _prompt_totp()
 
     try:
         verify_result = client.verify_totp(server, auth_token, totp_code)

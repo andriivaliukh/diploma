@@ -67,13 +67,87 @@ teardown_wg_plain() {
 # ---------------------------------------------------------------------------
 
 setup_wg_2fa() {
-    echo "STUB: setup_wg_2fa not yet implemented" >&2
-    return 1
+    if [[ -n "${WG2FA_PID:-}" ]]; then
+        kill -TERM "$WG2FA_PID" 2>/dev/null || true
+        wait "$WG2FA_PID" 2>/dev/null || true
+        unset WG2FA_PID
+    fi
+
+    local user="bench-user-$(date +%s)"
+    local pass
+    pass="$(openssl rand -hex 16)"
+    local server="${VPN_SERVER:-https://vpn.loreo.xyz}"
+
+    local start_ns
+    start_ns=$(date +%s%N)
+
+    # NOTE: --password and --totp-secret are visible in `ps aux` during the
+    # ~2-5s lifetime of each vpncli invocation. Credentials are randomly-
+    # generated per-invocation throwaway values; process-table visibility is an
+    # acceptable trade-off for this bench scenario.
+    log "wg-2fa: registering ${user}"
+    local secret
+    secret=$(vpncli register --server "$server" --username "$user" --password "$pass" --auto-totp 2>&1 >/dev/null \
+                 | grep -oE '^TOTP_SECRET=[A-Z2-7]+$' | head -1 | cut -d= -f2)
+    if [[ -z "$secret" ]]; then
+        die "wg-2fa: vpncli register failed (no TOTP_SECRET= line on stderr)"
+    fi
+
+    log "wg-2fa: logging in"
+    if ! vpncli login --server "$server" --username "$user" --password "$pass" --totp-secret "$secret"; then
+        die "wg-2fa: vpncli login failed"
+    fi
+
+    log "wg-2fa: connecting tunnel"
+    vpncli connect --server "$server" &
+    WG2FA_PID=$!
+
+    local i
+    for i in $(seq 1 100); do
+        if ip -4 addr show 2>/dev/null | grep -q '10\.10\.0\.'; then
+            break
+        fi
+        sleep 0.1
+    done
+
+    if ! ip -4 addr show 2>/dev/null | grep -q '10\.10\.0\.'; then
+        kill -TERM "$WG2FA_PID" 2>/dev/null || true
+        wait "$WG2FA_PID" 2>/dev/null || true
+        unset WG2FA_PID
+        die "wg-2fa pre-flight failed: no 10.10.0.x addr after 10s"
+    fi
+
+    if ! ping -c 1 -W 5 10.10.0.1 >/dev/null 2>&1; then
+        kill -TERM "$WG2FA_PID" 2>/dev/null || true
+        wait "$WG2FA_PID" 2>/dev/null || true
+        unset WG2FA_PID
+        die "wg-2fa pre-flight failed: cannot ping 10.10.0.1"
+    fi
+
+    local end_ns
+    end_ns=$(date +%s%N)
+    ONBOARD_MS=$(( (end_ns - start_ns) / 1000000 ))
+    SRV="10.10.0.1"
+    export SRV ONBOARD_MS WG2FA_PID
+
+    log "wg-2fa ready, SRV=$SRV, ONBOARD_MS=${ONBOARD_MS}ms (user=$user)"
 }
 
 teardown_wg_2fa() {
-    echo "STUB: teardown_wg_2fa not yet implemented" >&2
-    return 0
+    if [[ -n "${WG2FA_PID:-}" ]]; then
+        kill -TERM "$WG2FA_PID" 2>/dev/null || true
+        wait "$WG2FA_PID" 2>/dev/null || true
+        unset WG2FA_PID
+    fi
+
+    local iface
+    for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | sort -u); do
+        if [[ "$iface" =~ ^wg- ]] && [[ "$iface" != "wg-bench" ]]; then
+            ip link delete "$iface" 2>/dev/null || true
+        fi
+    done
+
+    SRV=""
 }
 
 # ---------------------------------------------------------------------------
