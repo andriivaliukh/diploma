@@ -61,6 +61,9 @@ run_metric_safely() {
     local scenario="$1" metric="$2" run="$3"
     local raw="$DATA_DIR/${scenario}-${metric}-run${run}.txt"
 
+    BENCH_CURRENT_SCENARIO="$scenario"
+    BENCH_CURRENT_RUN="$run"
+
     local cpu_pid=""
     if [[ "$metric" == "tcp_t" && "$scenario" != "no-vpn" ]]; then
         ssh "$VPS_A" "/opt/bench/remote_cpu_capture.sh ${scenario} ${metric} ${run}" &

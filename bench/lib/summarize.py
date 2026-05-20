@@ -89,6 +89,44 @@ def parse_mpstat_soft_pct(text: str) -> float:
     raise ValueError("No 'Average: all' row with %soft column found in mpstat output")
 
 
+def parse_udp_ramp(text: str) -> tuple:
+    """Parse concatenated iperf3 UDP ramp output; return (rate_mbps, notes).
+
+    Scans receiver summary lines (lines containing 'receiver' with both a
+    Mbits/sec value and a loss% field).  Applies first->last order:
+    - If first band loss > 1.0%: return (0.0, "first-step-lossy").
+    - If a band with loss > 1.0% is found after clean bands: return
+      (last_clean_rate, "").
+    - If all bands are clean (loss ≤ 1.0%): return (last_clean_rate,
+      "no-loss-at-top").
+    Exactly 1.0% loss is treated as clean (condition is strictly > 1.0).
+    Raises ValueError if no receiver summary lines are found.
+    """
+    last_clean_rate = None
+    found_any = False
+    for line in text.splitlines():
+        if not re.search(r'\breceiver\b', line):
+            continue
+        m_rate = re.search(r'(\d+(?:\.\d+)?)\s+Mbits/sec', line)
+        m_loss = re.search(r'\(([\d.]+)%\)', line)
+        if not (m_rate and m_loss):
+            continue
+        found_any = True
+        rate = float(m_rate.group(1))
+        loss_pct = float(m_loss.group(1))
+        if loss_pct <= 1.0:
+            last_clean_rate = rate
+        else:
+            if last_clean_rate is None:
+                return (0.0, "first-step-lossy")
+            return (last_clean_rate, "")
+    if not found_any:
+        raise ValueError("No UDP receiver summary lines found in iperf3 output")
+    if last_clean_rate is None:
+        return (0.0, "first-step-lossy")
+    return (last_clean_rate, "no-loss-at-top")
+
+
 def _ts_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -123,9 +161,59 @@ def summarize_tcp_t(raw_path: str, scenario: str, metric: str, run: int,
     ]
 
 
+def summarize_tcp_p(raw_path: str, scenario: str, metric: str, run: int,
+                    notes: str = "") -> list:
+    text = Path(raw_path).read_text()
+    mbps = parse_iperf3_sender_mbps(text)
+    stats = compute_stats([mbps])
+    return [
+        _ts_now(), scenario, metric, run,
+        f"{stats['median']:.3f}", "mbps",
+        f"{stats['median']:.3f}", f"{stats['p95']:.3f}",
+        f"{stats['stddev']:.3f}", f"{stats['mean']:.3f}",
+        stats["n"], notes,
+    ]
+
+
+def summarize_lat_load(raw_path: str, scenario: str, metric: str, run: int,
+                       notes: str = "") -> list:
+    text = Path(raw_path).read_text()
+    rtts = parse_ping_rtts(text)
+    if not rtts:
+        raise ValueError(f"No RTT samples in {raw_path}")
+    stats = compute_stats(rtts)
+    return [
+        _ts_now(), scenario, metric, run,
+        f"{stats['p95']:.3f}", "ms",
+        f"{stats['median']:.3f}", f"{stats['p95']:.3f}",
+        f"{stats['stddev']:.3f}", f"{stats['mean']:.3f}",
+        stats["n"], notes,
+    ]
+
+
+def summarize_udp(raw_path: str, scenario: str, metric: str, run: int,
+                  notes: str = "") -> list:
+    text = Path(raw_path).read_text()
+    rate, parser_note = parse_udp_ramp(text)
+    if notes and parser_note:
+        full_notes = f"{notes}|{parser_note}"
+    else:
+        full_notes = notes or parser_note
+    return [
+        _ts_now(), scenario, metric, run,
+        f"{rate:.3f}", "mbps_below_1pct_loss",
+        f"{rate:.3f}", f"{rate:.3f}",
+        "0.000", f"{rate:.3f}",
+        1, full_notes,
+    ]
+
+
 _SUMMARIZERS = {
     "lat_idle": summarize_lat_idle,
     "tcp_t": summarize_tcp_t,
+    "tcp_p": summarize_tcp_p,
+    "lat_load": summarize_lat_load,
+    "udp": summarize_udp,
 }
 
 

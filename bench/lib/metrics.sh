@@ -26,17 +26,30 @@ run_tcp_t() {
 # ---------------------------------------------------------------------------
 
 run_tcp_p() {
-    echo "STUB: run_tcp_p not yet implemented" >&2
-    return 1
+    local duration=60
+    [[ "${BENCH_MODE:-measure}" == "smoke" ]] && duration=10
+    iperf3 -c "$SRV" -t "$duration" -P 4
 }
 
 # ---------------------------------------------------------------------------
-# lat_load — iperf3 + ping in parallel; capture ping p95
+# lat_load — iperf3 (load generator) + ping (metric) in parallel.
+#
+# Design: run_lat_load writes the iperf3 secondary file directly using
+# BENCH_CURRENT_SCENARIO / BENCH_CURRENT_RUN (set by run_metric_safely before
+# each metric call).  Ping stdout is the primary metric source and flows to the
+# primary raw file via run_metric_safely's stdout redirect.  No special-casing
+# needed in run_metric_safely.
+#
+# Primary raw:   ${scenario}-lat_load-runN.txt  — ping output (value=p95 ms)
+# Secondary raw: ${scenario}-lat_load_iperf-runN.txt — iperf3 load (forensic)
 # ---------------------------------------------------------------------------
 
 run_lat_load() {
-    echo "STUB: run_lat_load not yet implemented" >&2
-    return 1
+    local iperf3_raw="${DATA_DIR}/${BENCH_CURRENT_SCENARIO}-lat_load_iperf-run${BENCH_CURRENT_RUN}.txt"
+    iperf3 -c "$SRV" -t 60 -P 1 > "$iperf3_raw" 2>&1 &
+    local iperf3_pid=$!
+    ping -c 300 -i 0.2 "$SRV"
+    wait "$iperf3_pid" || true
 }
 
 # ---------------------------------------------------------------------------
@@ -44,7 +57,12 @@ run_lat_load() {
 # ---------------------------------------------------------------------------
 
 run_udp() {
-    echo "STUB: run_udp not yet implemented" >&2
-    return 1
+    if [[ "${BENCH_MODE:-measure}" == "smoke" ]]; then
+        iperf3 -u -c "$SRV" -t 5 -b 50M
+    else
+        for b in 50M 100M 200M 400M 800M; do
+            iperf3 -u -c "$SRV" -t 30 -b "$b"
+        done
+    fi
 }
 
