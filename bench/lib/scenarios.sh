@@ -69,8 +69,10 @@ teardown_wg_plain() {
 # VPS A (vpnservice-vpn-server-1).  wg0 (10.10.0.1/24) lives inside that
 # container, not on the host.  The bench-side iperf3 server that works for
 # wg-plain (host, 10.99.0.1) is therefore unreachable from the wg-2fa tunnel
-# because port 5201 is not exposed by Docker.  Fix: copy the host iperf3 binary
-# into the container and start it there for the duration of the bench run.
+# because port 5201 is not exposed by Docker.  Fix: install iperf3 inside the
+# container via apt-get on first use, start a per-run server inside the
+# container namespace, and tear it down on scenario exit.  See the inline
+# comment in _setup_container_iperf3 for why docker cp was rejected.
 # See architect-1/observations.md for the §3.10 methodology footnote.
 # ---------------------------------------------------------------------------
 
@@ -128,7 +130,7 @@ setup_wg_2fa() {
         die "wg-2fa: vpncli not found at $vpncli_bin (set VPNCLI= to override)"
     fi
 
-    local user="benchuser$(date +%s)"
+    local user="benchuser$(date +%s%N)"
     local pass
     pass="$(openssl rand -hex 16)"
     local server="${VPN_SERVER:-https://vpn.loreo.xyz}"

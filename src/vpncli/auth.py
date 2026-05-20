@@ -91,36 +91,23 @@ def register_flow(
     totp_secret: str = result["totp_secret"]
     auth_token: str = result["auth_token"]
 
+    console.print(
+        Panel(
+            Text.from_markup(
+                "[bold green]Account created![/bold green]\n\n"
+                "Scan this URI in your authenticator app:\n\n"
+                f"[cyan]{totp_uri}[/cyan]\n\n"
+                "Or enter the secret manually:\n"
+                f"[yellow]{totp_secret}[/yellow]"
+            ),
+            title="TOTP Enrollment",
+            border_style="green",
+        )
+    )
     if auto_totp:
         print(f"TOTP_SECRET={totp_secret}", file=sys.stderr, flush=True)
-        console.print(
-            Panel(
-                Text.from_markup(
-                    "[bold green]Account created![/bold green]\n\n"
-                    "Scan this URI in your authenticator app:\n\n"
-                    f"[cyan]{totp_uri}[/cyan]\n\n"
-                    "Or enter the secret manually:\n"
-                    f"[yellow]{totp_secret}[/yellow]"
-                ),
-                title="TOTP Enrollment",
-                border_style="green",
-            )
-        )
         totp_code = _compute_totp_from_secret(totp_secret)
     else:
-        console.print(
-            Panel(
-                Text.from_markup(
-                    "[bold green]Account created![/bold green]\n\n"
-                    "Scan this URI in your authenticator app:\n\n"
-                    f"[cyan]{totp_uri}[/cyan]\n\n"
-                    "Or enter the secret manually:\n"
-                    f"[yellow]{totp_secret}[/yellow]"
-                ),
-                title="TOTP Enrollment",
-                border_style="green",
-            )
-        )
         totp_code = _prompt_totp()
 
     try:
