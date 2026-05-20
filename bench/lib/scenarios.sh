@@ -81,39 +81,39 @@ teardown_wg_2fa() {
 # ---------------------------------------------------------------------------
 
 setup_openvpn() {
-    pkill -f 'openvpn.*bench' 2>/dev/null || true
-    sleep 1
+    systemctl stop openvpn-client@ovpn-bench 2>/dev/null || true
 
-    local ovpn_conf="/etc/openvpn/bench.conf"
+    local ovpn_conf="/etc/openvpn/client/ovpn-bench.conf"
     if [[ ! -f "$ovpn_conf" ]]; then
         die "openvpn: config not found: $ovpn_conf"
     fi
-    if ! grep -q 'allow-deprecated-insecure-static-crypto' "$ovpn_conf"; then
-        die "openvpn: bench.conf missing allow-deprecated-insecure-static-crypto (required for static-key AES-256-CBC)"
+    if ! grep -q '^allow-deprecated-insecure-static-crypto' "$ovpn_conf"; then
+        die "openvpn: 2.7+ flag missing in $ovpn_conf; see HLD §E.2"
     fi
 
     local start_ns
     start_ns=$(date +%s%N)
 
-    log "pre-flight [openvpn]: starting openvpn with $ovpn_conf"
-    openvpn --config "$ovpn_conf" --daemon --log /tmp/openvpn-bench.log \
-        || die "openvpn: failed to start daemon"
+    log "pre-flight [openvpn]: starting openvpn-client@ovpn-bench"
+    if ! systemctl start openvpn-client@ovpn-bench; then
+        die "openvpn: systemctl start failed"
+    fi
 
     local i
-    for i in $(seq 1 30); do
+    for i in $(seq 1 50); do
         if ip -4 addr show tun0 2>/dev/null | grep -q '10\.99\.1\.2'; then
             break
         fi
-        sleep 1
+        sleep 0.1
     done
 
     if ! ip -4 addr show tun0 2>/dev/null | grep -q '10\.99\.1\.2'; then
-        pkill -f 'openvpn.*bench' 2>/dev/null || true
-        die "openvpn pre-flight failed: tun0 10.99.1.2 not assigned after 30s"
+        systemctl stop openvpn-client@ovpn-bench 2>/dev/null || true
+        die "openvpn pre-flight failed: tun0 10.99.1.2 not assigned after 5s"
     fi
 
     if ! ping -c 1 -W 5 10.99.1.1 >/dev/null 2>&1; then
-        pkill -f 'openvpn.*bench' 2>/dev/null || true
+        systemctl stop openvpn-client@ovpn-bench 2>/dev/null || true
         die "openvpn pre-flight failed: cannot ping 10.99.1.1"
     fi
 
@@ -126,8 +126,7 @@ setup_openvpn() {
 }
 
 teardown_openvpn() {
-    pkill -f 'openvpn.*bench' 2>/dev/null || true
-    sleep 1
+    systemctl stop openvpn-client@ovpn-bench 2>/dev/null || true
     SRV=""
 }
 
