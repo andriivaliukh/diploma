@@ -2,7 +2,7 @@ import pytest
 from summarize import (
     parse_ping_rtts, compute_stats,
     parse_iperf3_sender_mbps, parse_mpstat_soft_pct,
-    parse_udp_ramp,
+    parse_udp_ramp, parse_pidstat_cpu_pct,
 )
 
 
@@ -240,3 +240,46 @@ def test_parse_udp_ramp_exactly_one_pct_is_clean():
     rate, note = parse_udp_ramp(band)
     assert rate == pytest.approx(99.0)
     assert note == "no-loss-at-top"
+
+
+PIDSTAT_SAMPLE = "\n".join([
+    "Linux 7.0.0-14-generic (vps-a)    05/20/2026    _x86_64_    (1 CPU)",
+    "",
+    "10:05:01 AM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command",
+    "10:05:02 AM     0     25387    2.00    1.00    0.00    0.00    3.00     0  openvpn-bench",
+    "10:05:03 AM     0     25387    1.50    2.50    0.00    0.00    4.00     0  openvpn-bench",
+    "10:05:04 AM     0     25387    1.50    1.50    0.00    0.00    3.00     0  openvpn-bench",
+    "Average:          0     25387    1.67    1.67    0.00    0.00    3.50     -  openvpn-bench",
+])
+
+PIDSTAT_NO_AVERAGE = "\n".join([
+    "Linux 7.0.0-14-generic (vps-a)    05/20/2026    _x86_64_    (1 CPU)",
+    "",
+    "10:05:01 AM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command",
+    "10:05:02 AM     0     25387    2.00    1.00    0.00    0.00    3.00     0  openvpn-bench",
+])
+
+
+def test_parse_pidstat_cpu_pct_extracts_average():
+    pct = parse_pidstat_cpu_pct(PIDSTAT_SAMPLE)
+    assert pct == pytest.approx(3.5)
+
+
+def test_parse_pidstat_cpu_pct_returns_float():
+    pct = parse_pidstat_cpu_pct(PIDSTAT_SAMPLE)
+    assert isinstance(pct, float)
+
+
+def test_parse_pidstat_cpu_pct_raises_if_no_average_block():
+    with pytest.raises(ValueError):
+        parse_pidstat_cpu_pct(PIDSTAT_NO_AVERAGE)
+
+
+def test_parse_pidstat_cpu_pct_handles_zero_cpu():
+    output = "\n".join([
+        "10:05:01 AM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command",
+        "10:05:02 AM     0     25387    0.00    0.00    0.00    0.00    0.00     0  openvpn",
+        "Average:          0     25387    0.00    0.00    0.00    0.00    0.00     -  openvpn",
+    ])
+    pct = parse_pidstat_cpu_pct(output)
+    assert pct == pytest.approx(0.0)
