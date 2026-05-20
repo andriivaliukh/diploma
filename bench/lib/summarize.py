@@ -131,6 +131,26 @@ def parse_pidstat_cpu_pct(text: str) -> float:
     raise ValueError("No Average: data row with %CPU value found in pidstat output")
 
 
+def parse_iperf3_json_streams(json_text: str) -> dict:
+    """Return per-stream and sum sender Mbps from iperf3 --json output.
+
+    Returns {"per_stream": list[float], "sum": float} (Mbps, base-10 bps/1e6).
+    Raises ValueError on malformed JSON or unexpected structure.
+    """
+    import json as _json
+    try:
+        data = _json.loads(json_text)
+    except _json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid iperf3 JSON: {exc}") from exc
+    try:
+        streams = data["end"]["streams"]
+        per_stream = [s["sender"]["bits_per_second"] / 1e6 for s in streams]
+        total = data["end"]["sum_sent"]["bits_per_second"] / 1e6
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"Unexpected iperf3 JSON structure: {exc}") from exc
+    return {"per_stream": per_stream, "sum": total}
+
+
 def parse_udp_ramp(text: str) -> tuple:
     """Parse concatenated iperf3 UDP ramp output; return (rate_mbps, notes).
 
@@ -250,15 +270,15 @@ def summarize_udp(raw_path: str, scenario: str, metric: str, run: int,
     ]
 
 
-def summarize_cpu_tcp_t(raw_path: str, scenario: str, metric: str, run: int,
-                        notes: str = "") -> list:
+def summarize_cpu_metric(raw_path: str, scenario: str, metric: str, run: int,
+                         notes: str = "") -> list:
     text = Path(raw_path).read_text()
     if scenario in ("wg-plain", "wg-2fa"):
         pct = parse_mpstat_soft_pct(text)
     elif scenario == "openvpn":
         pct = parse_pidstat_cpu_pct(text)
     else:
-        raise ValueError(f"cpu_tcp_t not supported for scenario '{scenario}'")
+        raise ValueError(f"{metric} not supported for scenario '{scenario}'")
     return [
         _ts_now(), scenario, metric, run,
         f"{pct:.3f}", "pct",
@@ -274,7 +294,8 @@ _SUMMARIZERS = {
     "tcp_p": summarize_tcp_p,
     "lat_load": summarize_lat_load,
     "udp": summarize_udp,
-    "cpu_tcp_t": summarize_cpu_tcp_t,
+    "cpu_tcp_t": summarize_cpu_metric,
+    "cpu_tcp_p": summarize_cpu_metric,
 }
 
 

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
-from summarize import compute_stats
+from summarize import compute_stats, parse_iperf3_json_streams
 
 SCENARIOS = ["no-vpn", "wg-plain", "wg-2fa", "openvpn"]
 SCENARIO_LABELS = {
@@ -89,7 +89,51 @@ def _n_runs(cell) -> str:
     return str(cell["n"])
 
 
-def render_tables(cells: dict) -> str:
+def load_per_stream_data(data_dir: Path) -> dict:
+    """Scan data_dir for *-tcp_p-json-run*.json; return per-scenario stream lists.
+
+    Returns dict[scenario] → list[list[float]] where each inner list is
+    per-stream Mbps for one run (from parse_iperf3_json_streams).
+    Files that fail to parse are skipped silently.
+    """
+    result = {}
+    for f in sorted(data_dir.glob("*-tcp_p-json-run*.json")):
+        parts = f.stem.split("-tcp_p-json-run")
+        if len(parts) != 2:
+            continue
+        scenario = parts[0]
+        try:
+            data = parse_iperf3_json_streams(f.read_text())
+        except (ValueError, OSError):
+            continue
+        result.setdefault(scenario, []).append(data["per_stream"])
+    return result
+
+
+def _render_per_stream_section(per_stream_data: dict) -> str:
+    n_streams = max(len(runs[0]) for runs in per_stream_data.values() if runs)
+    header_parts = [f"Stream {i + 1}" for i in range(n_streams)] + ["SUM (Mbps)"]
+    lines = []
+    lines.append("## Розбалансованість потоків (Per-stream balance, tcp_p)\n")
+    lines.append("| Scenario | " + " | ".join(header_parts) + " |")
+    lines.append("|---" + "|---" * (n_streams + 1) + "|")
+    for scen in SCENARIOS:
+        runs = per_stream_data.get(scen)
+        if not runs:
+            continue
+        cols = []
+        for i in range(n_streams):
+            vals = [r[i] for r in runs if i < len(r)]
+            s = compute_stats(vals)
+            cols.append(f"{s['mean']:.1f} ± {s['stddev']:.1f}")
+        sum_stats = compute_stats([sum(r) for r in runs])
+        cols.append(f"{sum_stats['mean']:.1f} ± {sum_stats['stddev']:.1f}")
+        lines.append("| " + SCENARIO_LABELS[scen] + " | " + " | ".join(cols) + " |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_tables(cells: dict, per_stream_data: dict = None) -> str:
     def get(scenario, metric):
         return cells.get((scenario, metric))
 
@@ -134,13 +178,17 @@ def render_tables(cells: dict) -> str:
     lines.append("")
 
     lines.append("## CPU (%soft / %CPU)\n")
-    lines.append("| Scenario | cpu_tcp_t (%) | n_runs |")
-    lines.append("|---|---|---|")
+    lines.append("| Scenario | cpu_tcp_t (%) | cpu_tcp_p (%) | n_runs |")
+    lines.append("|---|---|---|---|")
     for scen in ["wg-plain", "wg-2fa", "openvpn"]:
-        cpu = get(scen, "cpu_tcp_t")
-        row = [SCENARIO_LABELS[scen], _fmt_cpu(cpu), _n_runs(cpu)]
+        ct = get(scen, "cpu_tcp_t")
+        cp = get(scen, "cpu_tcp_p")
+        row = [SCENARIO_LABELS[scen], _fmt_cpu(ct), _fmt_cpu(cp), _n_runs(ct)]
         lines.append("| " + " | ".join(row) + " |")
     lines.append("")
+
+    if per_stream_data:
+        lines.append(_render_per_stream_section(per_stream_data))
 
     return "\n".join(lines)
 
@@ -172,7 +220,8 @@ def main() -> int:
         return 1
 
     cells = aggregate_cells(rows)
-    output = render_tables(cells)
+    per_stream_data = load_per_stream_data(csv_path.parent)
+    output = render_tables(cells, per_stream_data)
 
     print(output)
 

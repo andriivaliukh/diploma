@@ -29,6 +29,10 @@ run_tcp_p() {
     local duration=60
     [[ "${BENCH_MODE:-measure}" == "smoke" ]] && duration=10
     iperf3 -c "$SRV" -t "$duration" -P 4
+    if [[ "${BENCH_MODE:-measure}" == "measure" ]]; then
+        local json_raw="${DATA_DIR}/${BENCH_CURRENT_SCENARIO}-tcp_p-json-run${BENCH_CURRENT_RUN}.json"
+        iperf3 -c "$SRV" -t "$duration" -P 4 --json > "$json_raw" 2>/dev/null || true
+    fi
 }
 
 # ---------------------------------------------------------------------------

@@ -65,7 +65,7 @@ run_metric_safely() {
     BENCH_CURRENT_RUN="$run"
 
     local cpu_pid=""
-    if [[ "$metric" == "tcp_t" && "$scenario" != "no-vpn" ]]; then
+    if [[ ( "$metric" == "tcp_t" || "$metric" == "tcp_p" ) && "$scenario" != "no-vpn" ]]; then
         ssh "$VPS_A" "/opt/bench/remote_cpu_capture.sh ${scenario} ${metric} ${run}" &
         cpu_pid=$!
     fi
@@ -121,15 +121,17 @@ run_scenario() {
         rsync "${VPS_A}:/tmp/cpu-${scenario}-*.txt" "$DATA_DIR/" 2>/dev/null \
             || warn "no CPU capture files rsynced for $scenario"
 
-        for run in $(seq 1 "$N"); do
-            local cpu_raw="$DATA_DIR/cpu-${scenario}-tcp_t-run${run}.txt"
-            if [[ -f "$cpu_raw" ]]; then
-                if ! $PYTHON3 "$BENCH_DIR/lib/summarize.py" \
-                        "$cpu_raw" "$scenario" "cpu_tcp_t" "$run" \
-                        >> "$RESULTS_CSV"; then
-                    warn "$scenario/cpu_tcp_t run $run: summarize failed"
+        for cpu_metric in cpu_tcp_t cpu_tcp_p; do
+            for run in $(seq 1 "$N"); do
+                local cpu_raw="$DATA_DIR/cpu-${scenario}-${cpu_metric#cpu_}-run${run}.txt"
+                if [[ -f "$cpu_raw" ]]; then
+                    if ! $PYTHON3 "$BENCH_DIR/lib/summarize.py" \
+                            "$cpu_raw" "$scenario" "$cpu_metric" "$run" \
+                            >> "$RESULTS_CSV"; then
+                        warn "$scenario/$cpu_metric run $run: summarize failed"
+                    fi
                 fi
-            fi
+            done
         done
     fi
 
