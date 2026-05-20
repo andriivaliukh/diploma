@@ -1,5 +1,5 @@
 import pytest
-from summarize import parse_ping_rtts, compute_stats
+from summarize import parse_ping_rtts, compute_stats, parse_iperf3_sender_mbps, parse_mpstat_soft_pct
 
 
 def make_ping_output(rtts):
@@ -85,3 +85,92 @@ def test_parse_ping_rtts_skips_malformed_lines():
         "\nFrom 10.0.0.99 icmp_seq=99 Destination Net Unreachable\n"
     rtts = parse_ping_rtts(output)
     assert rtts == pytest.approx(KNOWN_RTTS)
+
+
+IPERF3_SINGLE_STREAM = "\n".join([
+    "Connecting to host 81.27.101.178, port 5201",
+    "[  5] local 10.0.0.2 port 44312 connected to 81.27.101.178 port 5201",
+    "[ ID] Interval           Transfer     Bitrate         Retr  Cwnd",
+    "[  5]   0.00-1.00   sec  90.8 MBytes   761 Mbits/sec    0    939 KBytes",
+    "[  5]   1.00-2.00   sec  90.3 MBytes   758 Mbits/sec    0    939 KBytes",
+    "[  5]   2.00-3.00   sec  90.5 MBytes   759 Mbits/sec    0    939 KBytes",
+    "- - - - - - - - - - - - - - - - - - - - - - - - -",
+    "[ ID] Interval           Transfer     Bitrate         Retr",
+    "[  5]   0.00-3.00   sec   272 MBytes   761 Mbits/sec    0             sender",
+    "[  5]   0.00-3.00   sec   272 MBytes   759 Mbits/sec                  receiver",
+    "",
+    "iperf Done.",
+])
+
+IPERF3_TWO_SENDER_LINES = "\n".join([
+    "Connecting to host 81.27.101.178, port 5201",
+    "[  4] local 10.0.0.2 port 44313 connected to 81.27.101.178 port 5201",
+    "[  6] local 10.0.0.2 port 44314 connected to 81.27.101.178 port 5201",
+    "[ ID] Interval           Transfer     Bitrate         Retr  Cwnd",
+    "[  4]   0.00-3.00   sec   136 MBytes   380 Mbits/sec    0    470 KBytes       sender",
+    "[  6]   0.00-3.00   sec   136 MBytes   381 Mbits/sec    0    470 KBytes       sender",
+    "[SUM]   0.00-3.00   sec   272 MBytes   778 Mbits/sec    0                     sender",
+    "[SUM]   0.00-3.00   sec   272 MBytes   776 Mbits/sec                          receiver",
+    "",
+    "iperf Done.",
+])
+
+IPERF3_ERROR = "\n".join([
+    "iperf3: error - unable to connect to server: Connection refused",
+])
+
+MPSTAT_SAMPLE = "\n".join([
+    "Linux 5.15.0-1055-kvm (vps-a)  05/20/2026  _x86_64_  (1 CPU)",
+    "",
+    "10:05:01 AM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle",
+    "10:05:02 AM  all    0.00    0.00    1.00    0.00    0.00    2.00    0.00    0.00    0.00   97.00",
+    "10:05:02 AM    0    0.00    0.00    1.00    0.00    0.00    2.00    0.00    0.00    0.00   97.00",
+    "10:05:03 AM  all    1.00    0.00    0.00    0.00    0.00    6.00    0.00    0.00    0.00   93.00",
+    "10:05:03 AM    0    1.00    0.00    0.00    0.00    0.00    6.00    0.00    0.00    0.00   93.00",
+    "",
+    "Average:     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle",
+    "Average:     all    0.50    0.00    0.50    0.00    0.00    4.00    0.00    0.00    0.00   95.00",
+    "Average:       0    0.50    0.00    0.50    0.00    0.00    4.00    0.00    0.00    0.00   95.00",
+])
+
+MPSTAT_NO_AVERAGE = "\n".join([
+    "Linux 5.15.0-1055-kvm (vps-a)  05/20/2026  _x86_64_  (1 CPU)",
+    "",
+    "10:05:01 AM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle",
+    "10:05:02 AM  all    0.00    0.00    1.00    0.00    0.00    2.00    0.00    0.00    0.00   97.00",
+])
+
+
+def test_parse_iperf3_sender_mbps_extracts_value():
+    mbps = parse_iperf3_sender_mbps(IPERF3_SINGLE_STREAM)
+    assert mbps == pytest.approx(761.0)
+
+
+def test_parse_iperf3_sender_mbps_returns_float():
+    mbps = parse_iperf3_sender_mbps(IPERF3_SINGLE_STREAM)
+    assert isinstance(mbps, float)
+
+
+def test_parse_iperf3_sender_mbps_raises_on_missing():
+    with pytest.raises(ValueError):
+        parse_iperf3_sender_mbps(IPERF3_ERROR)
+
+
+def test_parse_iperf3_sender_mbps_uses_last_sender_line():
+    mbps = parse_iperf3_sender_mbps(IPERF3_TWO_SENDER_LINES)
+    assert mbps == pytest.approx(778.0)
+
+
+def test_parse_mpstat_soft_pct_returns_average_all():
+    pct = parse_mpstat_soft_pct(MPSTAT_SAMPLE)
+    assert pct == pytest.approx(4.0)
+
+
+def test_parse_mpstat_soft_pct_returns_float():
+    pct = parse_mpstat_soft_pct(MPSTAT_SAMPLE)
+    assert isinstance(pct, float)
+
+
+def test_parse_mpstat_soft_pct_raises_if_no_average_block():
+    with pytest.raises(ValueError):
+        parse_mpstat_soft_pct(MPSTAT_NO_AVERAGE)
