@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Server**: Ubuntu 24.04 LTS VPS (tested on UpCloud, works on any provider)
+- **Server**: Ubuntu 26.04 LTS (Resolute Raccoon) VPS (tested on UpCloud, works on any provider)
 - **Resources**: 1 vCPU, 1 GB RAM minimum
 - **Network**: Public IP address with ports 22, 80, 443 (TCP) and 51820 (UDP) available
 - **Domain** (optional): DNS A-record pointing to the server IP (required for Let's Encrypt TLS)
