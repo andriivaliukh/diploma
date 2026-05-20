@@ -83,9 +83,10 @@ _setup_container_iperf3() {
     # docker cp approach was attempted but the container (Debian 13) is missing
     # libiperf.so.0 and libsctp.so.1 required by the host binary.  Use apt-get
     # install instead; the Debian apt cache is pre-warmed so this takes ~2-3 s on
-    # the first run and is a no-op on subsequent runs (packages stay installed
-    # for the lifetime of the container).
-    ssh "$VPS_A" "docker exec '$container' apt-get install -y -q iperf3 2>/dev/null" \
+    # the first run and is a no-op on subsequent runs (packages stay installed for
+    # the container's lifetime; container restart wipes everything back to image
+    # state, so no production-config change is made).
+    ssh "$VPS_A" "docker exec '$container' apt-get install -y -q iperf3" \
         || die "wg-2fa: apt-get install iperf3 in container failed"
 
     # Start server; write PID to file so teardown can kill it without pkill/pgrep
