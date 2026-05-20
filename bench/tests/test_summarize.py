@@ -78,3 +78,10 @@ def test_compute_stats_p95_all_same():
 def test_compute_stats_empty_raises_value_error():
     with pytest.raises(ValueError):
         compute_stats([])
+
+
+def test_parse_ping_rtts_skips_malformed_lines():
+    output = make_ping_output(KNOWN_RTTS) + \
+        "\nFrom 10.0.0.99 icmp_seq=99 Destination Net Unreachable\n"
+    rtts = parse_ping_rtts(output)
+    assert rtts == pytest.approx(KNOWN_RTTS)

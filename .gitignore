@@ -32,6 +32,9 @@ build/
 *.db
 *.key
 
+# Bench raw output (rsync'd back to laptop after runs; not committed)
+data/benchmarks/
+
 # OS
 .DS_Store
 *.pdf
