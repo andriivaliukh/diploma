@@ -59,6 +59,7 @@ def _make_mock_env(tmp_path: Path, pgrep_stdout: str, pgrep_exit: int = 0) -> di
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+    env["BENCH_CPU_TMP_DIR"] = str(tmp_path)
     return env
 
 
@@ -113,10 +114,6 @@ def test_pgrep_pattern_does_not_match_other_openvpn():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason="Script writes to /tmp/ which is sandbox-restricted locally. "
-    "Enabled in the impl commit after BENCH_CPU_TMP_DIR support is added to the script."
-)
 def test_openvpn_happy_path_exits_zero(tmp_path):
     """One PID returned by pgrep → script exits 0 and runs pidstat."""
     result = _run_script(tmp_path, "openvpn", "tcp_t", "1",
@@ -124,10 +121,6 @@ def test_openvpn_happy_path_exits_zero(tmp_path):
     assert result.returncode == 0, f"stderr: {result.stderr}"
 
 
-@pytest.mark.skip(
-    reason="Script writes to /tmp/ which is sandbox-restricted locally. "
-    "Enabled in the impl commit after BENCH_CPU_TMP_DIR support is added to the script."
-)
 def test_openvpn_zero_pids_exits_nonzero_with_message(tmp_path):
     """No PID returned (pgrep exit 1) → script exits non-zero with diagnostic."""
     result = _run_script(tmp_path, "openvpn", "tcp_t", "1",
@@ -139,10 +132,6 @@ def test_openvpn_zero_pids_exits_nonzero_with_message(tmp_path):
     )
 
 
-@pytest.mark.skip(
-    reason="Script writes to /tmp/ which is sandbox-restricted locally. "
-    "Enabled in the impl commit after BENCH_CPU_TMP_DIR support is added to the script."
-)
 def test_openvpn_multi_pids_exits_nonzero_listing_all_pids(tmp_path):
     """Multiple PIDs returned → script exits non-zero and lists all matched PIDs."""
     result = _run_script(tmp_path, "openvpn", "tcp_t", "1",
