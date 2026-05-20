@@ -14,6 +14,9 @@ import csv
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent / "lib"))
+from summarize import compute_stats
+
 SCENARIOS = ["no-vpn", "wg-plain", "wg-2fa", "openvpn"]
 SCENARIO_LABELS = {
     "no-vpn":   "Без VPN (базовий)",
@@ -21,6 +24,8 @@ SCENARIO_LABELS = {
     "wg-2fa":   "Ця система (WG + 2FA)",
     "openvpn":  "OpenVPN (AES-256-CBC)",
 }
+TODO = r"\TODO{fill in after measurement campaign}"
+NA = "N/A"
 
 
 def load_csv(path: Path) -> list:
@@ -28,21 +33,116 @@ def load_csv(path: Path) -> list:
         return list(csv.DictReader(f))
 
 
-def cell_rows(rows: list, scenario: str, metric: str) -> list:
-    return [r for r in rows if r["scenario"] == scenario and r["metric"] == metric]
+def aggregate_cells(rows: list, expected_n: int = 5) -> dict:
+    """Group rows by (scenario, metric); compute cross-run stats from value column.
+
+    Cross-run stddev is recomputed from values — NOT averaged from per-row stddev.
+    Returns dict[(scenario, metric)] → {n, mean, median, stddev, p95, notes}.
+    If len(values) < expected_n, notes = "only N/M runs".
+    """
+    groups = {}
+    for r in rows:
+        key = (r["scenario"], r["metric"])
+        groups.setdefault(key, []).append(float(r["value"]))
+
+    result = {}
+    for key, values in groups.items():
+        stats = compute_stats(values)
+        notes = "" if len(values) >= expected_n else f"only {len(values)}/{expected_n} runs"
+        result[key] = {**stats, "notes": notes}
+    return result
 
 
-def cross_run_stats(values: list) -> dict:
-    if not values:
-        return {}
-    n = len(values)
-    mean = sum(values) / n
-    sorted_v = sorted(values)
-    mid = n // 2
-    median = sorted_v[mid] if n % 2 == 1 else (sorted_v[mid-1] + sorted_v[mid]) / 2.0
-    variance = sum((x - mean) ** 2 for x in values) / n
-    stddev = variance ** 0.5
-    return {"mean": mean, "median": median, "stddev": stddev, "n": n}
+def _fmt_lat(cell) -> str:
+    if cell is None:
+        return TODO
+    return f"{cell['median']:.3f} ± {cell['stddev']:.3f}"
+
+
+def _fmt_p95(cell) -> str:
+    if cell is None:
+        return TODO
+    return f"{cell['p95']:.3f}"
+
+
+def _fmt_tput(cell) -> str:
+    if cell is None:
+        return TODO
+    return f"{cell['median']:.1f} ± {cell['stddev']:.1f}"
+
+
+def _fmt_cpu(cell) -> str:
+    if cell is None:
+        return TODO
+    return f"{cell['median']:.2f} ± {cell['stddev']:.2f}"
+
+
+def _fmt_onboard(cell) -> str:
+    if cell is None:
+        return TODO
+    return str(int(round(cell["median"])))
+
+
+def _n_runs(cell) -> str:
+    if cell is None:
+        return "0"
+    return str(cell["n"])
+
+
+def render_tables(cells: dict) -> str:
+    def get(scenario, metric):
+        return cells.get((scenario, metric))
+
+    lines = []
+
+    lines.append("## Затримка (Latency)\n")
+    lines.append(
+        "| Scenario | lat_idle med ± stddev (ms) | lat_idle p95 (ms)"
+        " | lat_load p95 (ms) | onboard (ms) | n_runs |"
+    )
+    lines.append("|---|---|---|---|---|---|")
+    for scen in SCENARIOS:
+        lat = get(scen, "lat_idle")
+        ll = get(scen, "lat_load")
+        ob = get(scen, "onboard")
+        row = [
+            SCENARIO_LABELS[scen],
+            _fmt_lat(lat),
+            _fmt_p95(lat),
+            _fmt_p95(ll),
+            NA if scen == "no-vpn" else _fmt_onboard(ob),
+            _n_runs(lat),
+        ]
+        lines.append("| " + " | ".join(row) + " |")
+    lines.append("")
+
+    lines.append("## Пропускна здатність (Throughput)\n")
+    lines.append("| Scenario | tcp_t (Mbps) | tcp_p (Mbps) | udp (Mbps) | n_runs |")
+    lines.append("|---|---|---|---|---|")
+    for scen in SCENARIOS:
+        tt = get(scen, "tcp_t")
+        tp = get(scen, "tcp_p")
+        ud = get(scen, "udp")
+        row = [
+            SCENARIO_LABELS[scen],
+            _fmt_tput(tt),
+            _fmt_tput(tp),
+            _fmt_tput(ud),
+            _n_runs(tt),
+        ]
+        lines.append("| " + " | ".join(row) + " |")
+    lines.append("")
+
+    lines.append("## CPU (%soft / %CPU)\n")
+    lines.append("| Scenario | cpu_tcp_t (%) | n_runs |")
+    lines.append("|---|---|---|")
+    for scen in ["wg-plain", "wg-2fa", "openvpn"]:
+        cpu = get(scen, "cpu_tcp_t")
+        row = [SCENARIO_LABELS[scen], _fmt_cpu(cpu), _n_runs(cpu)]
+        lines.append("| " + " | ".join(row) + " |")
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 def main() -> int:
@@ -71,9 +171,15 @@ def main() -> int:
         print("ERROR: results.csv is empty.", file=sys.stderr)
         return 1
 
-    # TODO (commit 2): implement full aggregation and table generation.
-    print("aggregate.py skeleton — full aggregation not yet implemented.", file=sys.stderr)
-    print(f"Loaded {len(rows)} rows from {csv_path}.")
+    cells = aggregate_cells(rows)
+    output = render_tables(cells)
+
+    print(output)
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(output)
+    print(f"Written to {out_path}", file=sys.stderr)
     return 0
 
 

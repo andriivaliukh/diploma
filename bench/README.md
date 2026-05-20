@@ -31,6 +31,48 @@ chmod +x run.sh
 ./run.sh openvpn
 ```
 
+## Campaign workflow
+
+Full measurement campaign (~3–4 h wall-clock for 4 scenarios × 7 metrics × N=5).
+
+**Step 1 — pre-flight (from laptop)**
+```bash
+ssh root@94.237.94.30 'ping -c 1 81.27.101.178'   # VPS B → VPS A reachable
+ssh root@81.27.101.178 'pgrep -a iperf3'           # iperf3 server running on VPS A
+```
+
+**Step 2 — sync harness to VPS B**
+```bash
+rsync -avz bench/ root@94.237.94.30:/root/bench/
+```
+
+**Step 3 — run campaign (on VPS B, in tmux or screen)**
+```bash
+ssh root@94.237.94.30
+tmux new -s bench
+cd /root/bench && BENCH_MODE=measure ./run.sh      # all 4 scenarios, ~3-4 h
+# or per-scenario:
+BENCH_MODE=measure ./run.sh no-vpn
+BENCH_MODE=measure ./run.sh wg-plain
+BENCH_MODE=measure ./run.sh openvpn
+```
+
+**Step 4 — rsync results back (from laptop)**
+```bash
+rsync -avz root@94.237.94.30:/root/data/benchmarks/ ./data/benchmarks/
+```
+
+**Step 5 — aggregate on laptop**
+```bash
+python3 bench/aggregate.py
+# output: data/benchmarks/tables-for-thesis.md (also printed to stdout)
+```
+
+**Step 6 — paste into thesis**
+Copy the three markdown tables from `tables-for-thesis.md` into `src/chapters/chapter3.tex` §3.10.
+Cells showing `\TODO{fill in after measurement campaign}` mean that scenario × metric
+was not measured yet — fill in after running the missing scenario.
+
 ## Environment variables
 
 | Variable | Default | Effect |
