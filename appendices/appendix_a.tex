@@ -3,10 +3,13 @@
 
 У цьому додатку наведено вихідний код ключових модулів розробленої системи.
 Лістинги~\ref{lst:app_wg_manager}--\ref{lst:app_caddyfile} охоплюють управління
-інтерфейсом WireGuard, логіку VPN-сесій, маршрутизатор автентифікації
-та конфігурацію середовища розгортання.
+інтерфейсом WireGuard, логіку VPN-сесій, маршрутизатор автентифікації,
+оркестрацію контейнерів та конфігурацію зворотного проксі.
 
 %% ── WireGuard Manager ──────────────────────────────────────────────────────
+
+Модуль \texttt{wireguard/manager.py} керує життєвим циклом інтерфейсу
+\texttt{wg0} та вузлів через системні утиліти.
 
 \lstinputlisting[
   style=mystyle,
@@ -17,32 +20,45 @@
 
 %% ── VPN Session Service ────────────────────────────────────────────────────
 
+Модуль \texttt{vpn/service.py} реалізує бізнес-логіку створення, відстеження
+та відкликання VPN-сесій.
+
 \lstinputlisting[
   style=mystyle,
   language=Python,
   caption={Бізнес-логіка управління VPN-сесіями (\texttt{vpn/service.py})},
-  label={lst:vpn_service}
+  label={lst:app_vpn_service}
 ]{src/vpnservice/vpn/service.py}
 
 %% ── Auth API Router ────────────────────────────────────────────────────────
+
+Модуль \texttt{auth/router.py} визначає FastAPI-маршрути для двоетапної
+автентифікації (логін, верифікація TOTP, реєстрація).
 
 \lstinputlisting[
   style=mystyle,
   language=Python,
   caption={Маршрутизатор API автентифікації (\texttt{auth/router.py})},
-  label={lst:auth_router}
+  label={lst:app_auth_router}
 ]{src/vpnservice/auth/router.py}
 
 %% ── Docker Compose ─────────────────────────────────────────────────────────
+
+Файл \texttt{docker-compose.yml} оркеструє запуск контейнерів
+\texttt{vpn-server} та \texttt{caddy} з необхідними мережевими привілеями
+та томами.
 
 \lstinputlisting[
   style=mystyle,
   language={},
   caption={Конфігурація контейнерного розгортання (\texttt{docker-compose.yml})},
-  label={lst:docker_compose}
+  label={lst:app_docker_compose}
 ]{src/docker-compose.yml}
 
 %% ── Caddyfile ──────────────────────────────────────────────────────────────
+
+Файл \texttt{Caddyfile} конфігурує зворотний проксі та автоматичне отримання
+TLS-сертифікатів.
 
 \lstinputlisting[
   style=mystyle,
