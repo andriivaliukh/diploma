@@ -89,6 +89,48 @@ def parse_mpstat_soft_pct(text: str) -> float:
     raise ValueError("No 'Average: all' row with %soft column found in mpstat output")
 
 
+def parse_pidstat_cpu_pct(text: str) -> float:
+    """Return mean %CPU from the Average: row of pidstat -p <pid> 1 N output.
+
+    Strategy A (strip-prefix-then-index): strips leading time tokens
+    (hh:mm:ss + optional AM/PM) from the column-header line to obtain the
+    data-column list, finds %CPU's index there, then strips the single
+    'Average:' token from the Average: data row and reads the same index.
+    Robust to AM/PM vs 24-hour formats and to column reorderings.
+    Raises ValueError if no valid Average: data row is found.
+    """
+    cpu_data_idx = None
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts or parts[0] == "Average:":
+            continue
+        if "%CPU" not in parts:
+            continue
+        i = 0
+        while i < len(parts) and (
+            re.match(r'^\d+:\d+:\d+$', parts[i]) or parts[i] in ("AM", "PM")
+        ):
+            i += 1
+        data_cols = parts[i:]
+        if "%CPU" in data_cols:
+            cpu_data_idx = data_cols.index("%CPU")
+            break
+
+    if cpu_data_idx is None:
+        raise ValueError("No %CPU column found in pidstat header")
+
+    for line in text.splitlines():
+        parts = line.split()
+        if parts and parts[0] == "Average:":
+            data_cols = parts[1:]
+            if len(data_cols) > cpu_data_idx:
+                try:
+                    return float(data_cols[cpu_data_idx])
+                except ValueError:
+                    continue
+    raise ValueError("No Average: data row with %CPU value found in pidstat output")
+
+
 def parse_udp_ramp(text: str) -> tuple:
     """Parse concatenated iperf3 UDP ramp output; return (rate_mbps, notes).
 
@@ -208,12 +250,31 @@ def summarize_udp(raw_path: str, scenario: str, metric: str, run: int,
     ]
 
 
+def summarize_cpu_tcp_t(raw_path: str, scenario: str, metric: str, run: int,
+                        notes: str = "") -> list:
+    text = Path(raw_path).read_text()
+    if scenario in ("wg-plain", "wg-2fa"):
+        pct = parse_mpstat_soft_pct(text)
+    elif scenario == "openvpn":
+        pct = parse_pidstat_cpu_pct(text)
+    else:
+        raise ValueError(f"cpu_tcp_t not supported for scenario '{scenario}'")
+    return [
+        _ts_now(), scenario, metric, run,
+        f"{pct:.3f}", "pct",
+        f"{pct:.3f}", f"{pct:.3f}",
+        "0.000", f"{pct:.3f}",
+        1, notes,
+    ]
+
+
 _SUMMARIZERS = {
     "lat_idle": summarize_lat_idle,
     "tcp_t": summarize_tcp_t,
     "tcp_p": summarize_tcp_p,
     "lat_load": summarize_lat_load,
     "udp": summarize_udp,
+    "cpu_tcp_t": summarize_cpu_tcp_t,
 }
 
 

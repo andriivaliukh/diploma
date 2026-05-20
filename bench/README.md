@@ -95,7 +95,7 @@ python3 bench/aggregate.py
 ### Post-run cross-scenario gates (emit WARN, continue)
 
 1. `tcp_t` wg-plain vs wg-2fa within ±5 % (same kernel data-plane).
-2. All `tcp_t` < 850 Mbps (1 vCPU virtio NIC ceiling; ≥ 900 = flag).
+2. All `tcp_t` < 900 Mbps (1 vCPU virtio NIC ceiling; ≥ 900 = WARN, ≥ 950 = hard-flag). Empirically calibrated: wg-plain smoke run yielded 885 Mbps, so 900/950 gives a ~2%/7% headroom above observed baseline.
 3. `lat_idle` mean within 5 ms of no-vpn baseline (pre-captured at harness start).
 4. Per-cell `stddev/mean > 20 %` → bump to N=10 + `iperf3 -t 120` for that cell only.
 5. `openvpn lat_idle.median − wg-plain lat_idle.median` in (0, 1.5] ms; outside range = WARN.

@@ -120,10 +120,84 @@ run_scenario() {
     if [[ "$scenario" != "no-vpn" ]]; then
         rsync "${VPS_A}:/tmp/cpu-${scenario}-*.txt" "$DATA_DIR/" 2>/dev/null \
             || warn "no CPU capture files rsynced for $scenario"
+
+        for run in $(seq 1 "$N"); do
+            local cpu_raw="$DATA_DIR/cpu-${scenario}-tcp_t-run${run}.txt"
+            if [[ -f "$cpu_raw" ]]; then
+                if ! $PYTHON3 "$BENCH_DIR/lib/summarize.py" \
+                        "$cpu_raw" "$scenario" "cpu_tcp_t" "$run" \
+                        >> "$RESULTS_CSV"; then
+                    warn "$scenario/cpu_tcp_t run $run: summarize failed"
+                fi
+            fi
+        done
     fi
 
     teardown_scenario "$scenario"
     CURRENT_SCENARIO=""
+}
+
+apply_sanity_gates() {
+    [[ ! -f "$RESULTS_CSV" ]] && return 0
+    $PYTHON3 - "$RESULTS_CSV" >&2 <<'PYEOF'
+import csv, sys
+
+path = sys.argv[1]
+with open(path) as f:
+    rows = list(csv.DictReader(f))
+
+
+def get_vals(rows, scenario, metric, field):
+    return [float(r[field]) for r in rows
+            if r['scenario'] == scenario and r['metric'] == metric and r.get(field)]
+
+
+def warn(msg):
+    print(f"WARN [sanity]: {msg}")
+
+
+wgp = get_vals(rows, 'wg-plain', 'tcp_t', 'value')
+wg2 = get_vals(rows, 'wg-2fa', 'tcp_t', 'value')
+if wgp and wg2:
+    avg_wgp = sum(wgp) / len(wgp)
+    avg_wg2 = sum(wg2) / len(wg2)
+    if avg_wgp > 0 and abs(avg_wgp - avg_wg2) / avg_wgp > 0.05:
+        warn(f"Gate 1: tcp_t wg-plain ({avg_wgp:.1f}) vs wg-2fa ({avg_wg2:.1f}) differ >5%")
+
+for scen in ('no-vpn', 'wg-plain', 'wg-2fa', 'openvpn'):
+    for v in get_vals(rows, scen, 'tcp_t', 'value'):
+        if v >= 950:
+            warn(f"Gate 2: {scen} tcp_t={v:.0f} Mbps >=950 (hard-flag: near 1-vCPU NIC ceiling)")
+        elif v >= 900:
+            warn(f"Gate 2: {scen} tcp_t={v:.0f} Mbps >=900 (approaching NIC ceiling)")
+
+base = get_vals(rows, 'no-vpn', 'lat_idle', 'mean')
+if base:
+    base_mean = sum(base) / len(base)
+    for scen in ('wg-plain', 'wg-2fa', 'openvpn'):
+        vals = get_vals(rows, scen, 'lat_idle', 'mean')
+        if vals:
+            scen_mean = sum(vals) / len(vals)
+            if abs(scen_mean - base_mean) > 5.0:
+                warn(f"Gate 3: {scen} lat_idle mean ({scen_mean:.2f} ms) >5 ms from no-vpn ({base_mean:.2f} ms)")
+
+for r in rows:
+    try:
+        mean = float(r['mean'])
+        stddev = float(r['stddev'])
+        if mean > 0 and stddev / mean > 0.20:
+            warn(f"Gate 4: {r['scenario']}/{r['metric']}/run{r['run']} "
+                 f"stddev/mean={stddev/mean:.0%} >20% — consider N=10, iperf3 -t 120")
+    except (ValueError, ZeroDivisionError, KeyError):
+        pass
+
+ovpn_med = get_vals(rows, 'openvpn', 'lat_idle', 'median')
+wgp_med = get_vals(rows, 'wg-plain', 'lat_idle', 'median')
+if ovpn_med and wgp_med:
+    delta = sum(ovpn_med) / len(ovpn_med) - sum(wgp_med) / len(wgp_med)
+    if not (0 < delta <= 1.5):
+        warn(f"Gate 5: openvpn-wg-plain lat_idle delta={delta:.2f} ms outside (0, 1.5] ms")
+PYEOF
 }
 
 cleanup_on_exit() {
@@ -145,6 +219,7 @@ main() {
     else
         run_scenario "$target"
     fi
+    apply_sanity_gates
     log "Done. Results: $RESULTS_CSV"
 }
 

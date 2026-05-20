@@ -81,13 +81,51 @@ teardown_wg_2fa() {
 # ---------------------------------------------------------------------------
 
 setup_openvpn() {
-    echo "STUB: setup_openvpn not yet implemented" >&2
-    return 1
+    pkill -f 'openvpn.*bench' 2>/dev/null || true
+    sleep 1
+
+    local ovpn_conf="/etc/openvpn/bench.conf"
+    if [[ ! -f "$ovpn_conf" ]]; then
+        die "openvpn: config not found: $ovpn_conf"
+    fi
+
+    local start_ns
+    start_ns=$(date +%s%N)
+
+    log "pre-flight [openvpn]: starting openvpn with $ovpn_conf"
+    openvpn --config "$ovpn_conf" --daemon --log /tmp/openvpn-bench.log \
+        || die "openvpn: failed to start daemon"
+
+    local i
+    for i in $(seq 1 30); do
+        if ip -4 addr show tun0 2>/dev/null | grep -q '10\.99\.1\.2'; then
+            break
+        fi
+        sleep 1
+    done
+
+    if ! ip -4 addr show tun0 2>/dev/null | grep -q '10\.99\.1\.2'; then
+        pkill -f 'openvpn.*bench' 2>/dev/null || true
+        die "openvpn pre-flight failed: tun0 10.99.1.2 not assigned after 30s"
+    fi
+
+    if ! ping -c 1 -W 5 10.99.1.1 >/dev/null 2>&1; then
+        pkill -f 'openvpn.*bench' 2>/dev/null || true
+        die "openvpn pre-flight failed: cannot ping 10.99.1.1"
+    fi
+
+    local end_ns
+    end_ns=$(date +%s%N)
+    ONBOARD_MS=$(( (end_ns - start_ns) / 1000000 ))
+    SRV="10.99.1.1"
+    export SRV ONBOARD_MS
+    log "openvpn ready, SRV=$SRV, ONBOARD_MS=${ONBOARD_MS}ms"
 }
 
 teardown_openvpn() {
-    echo "STUB: teardown_openvpn not yet implemented" >&2
-    return 0
+    pkill -f 'openvpn.*bench' 2>/dev/null || true
+    sleep 1
+    SRV=""
 }
 
 # ---------------------------------------------------------------------------
