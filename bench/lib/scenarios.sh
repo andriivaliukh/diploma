@@ -88,6 +88,9 @@ setup_openvpn() {
     if [[ ! -f "$ovpn_conf" ]]; then
         die "openvpn: config not found: $ovpn_conf"
     fi
+    if ! grep -q 'allow-deprecated-insecure-static-crypto' "$ovpn_conf"; then
+        die "openvpn: bench.conf missing allow-deprecated-insecure-static-crypto (required for static-key AES-256-CBC)"
+    fi
 
     local start_ns
     start_ns=$(date +%s%N)
