@@ -988,7 +988,7 @@ p95). Тунельне накладання WireGuard~--- як ядерного,
 \caption{Затримка у стані спокою (мс), N=5}
 \label{tab:perf_lat_idle}
 \begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
-\textbf{Сценарій} & \textbf{Медіана ± СКВ} & \textbf{p95} & \textbf{Примітка} \\\hline
+\textbf{Сценарій} & \textbf{Медіана ± СКВ (мс)} & \textbf{p95 (мс)} & \textbf{Примітка} \\\hline
 Без VPN (базовий)     & $24{,}00 \pm 0{,}04$ & $24{,}08$ & еталон \\\hline
 WG plain (ядро)       & $24{,}20 \pm 0{,}00$ & $24{,}20$ & \\\hline
 Ця система (WG+2FA)   & $24{,}20 \pm 0{,}00$ & $24{,}20$ & \\\hline
@@ -1008,7 +1008,7 @@ WireGuard-стеки демонструють \textit{bufferbloat} на рівн
 \caption{Затримка під навантаженням (мс), N=5}
 \label{tab:perf_lat_load}
 \begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
-\textbf{Сценарій} & \textbf{p95} & \textbf{Буферний bloat, мс} & \textbf{Примітка} \\\hline
+\textbf{Сценарій} & \textbf{p95 (мс)} & \textbf{Буферний bloat, мс} & \textbf{Примітка} \\\hline
 Без VPN (базовий)     & $24{,}20$ & $+0{,}12$ & еталон \\\hline
 WG plain (ядро)       & $26{,}60$ & $+2{,}40$ & sk\_buff queue fill \\\hline
 Ця система (WG+2FA)   & $27{,}26$ & $+3{,}06$ & network ns hop \\\hline
@@ -1030,10 +1030,10 @@ OpenVPN (AES-256-CBC) & $24{,}88$ & $+0{,}48$ & обмежена смуга \\\h
 \label{tab:perf_tcp}
 \begin{tabularx}{\textwidth}{|l|X|X|X|X|}\hline
 \textbf{Сценарій}
-  & \textbf{tcp\_t (1 потік)}
-  & \textbf{tcp\_p (4 потоки)}
+  & \textbf{tcp\_t (1 потік, Мбіт/с)}
+  & \textbf{tcp\_p (4 потоки, Мбіт/с)}
   & \textbf{$\Delta_{p-t}$,\,\%}
-  & \textbf{UDP (перший крок втрат)} \\\hline
+  & \textbf{UDP (перший крок втрат, Мбіт/с)} \\\hline
 Без VPN (базовий)     & $944 \pm 57$  & $990$            & $+4{,}9$ & 799 \\\hline
 WG plain (ядро)       & $890 \pm 2{,}9$ & $917 \pm 35$  & $+3{,}0$ & 399 \\\hline
 Ця система (WG+2FA)   & $881 \pm 2{,}1$ & $917 \pm 3{,}1$ & $+4{,}1$ & 399 \\\hline
@@ -1139,7 +1139,7 @@ OpenVPN серіалізує кожен пакет через єдиний users
 \caption{Час введення у тунель (онбординг, мс), N=5}
 \label{tab:perf_onboard}
 \begin{tabularx}{\textwidth}{|l|X|X|}\hline
-\textbf{Сценарій} & \textbf{Медіана} & \textbf{Примітка} \\\hline
+\textbf{Сценарій} & \textbf{Медіана (мс)} & \textbf{Примітка} \\\hline
 WG plain (ядро)       & 92    & \texttt{wg-quick up} + ping-цикл \\\hline
 Ця система (WG+2FA)   & 1571  & HTTP POST /register \textrightarrow{} POST /login (TOTP) \textrightarrow{} реєстрація ключа \textrightarrow{} \texttt{wg-quick up} \\\hline
 OpenVPN (AES-256-CBC) & 82    & \texttt{openvpn --daemon} + ping-цикл \\\hline
