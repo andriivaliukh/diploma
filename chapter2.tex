@@ -91,7 +91,7 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \begin{tikzpicture}[
   box/.style={rectangle, draw, thick, minimum width=2.8cm, minimum height=0.9cm,
               font=\small\bfseries, align=center, rounded corners=2pt},
-  module/.style={rectangle, draw, dashed, minimum width=2.0cm, minimum height=0.7cm,
+  module/.style={rectangle, draw, dashed, minimum width=2.0cm, minimum height=1.0cm,
               font=\footnotesize, align=center},
   arr/.style={-{Stealth[length=5pt]}, thick},
   biarr/.style={{Stealth[length=5pt]}-{Stealth[length=5pt]}, thick},
@@ -107,19 +107,18 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \node[box, fill=orange!15] (caddy) at (5,0) {Caddy\\(зворотний проксі\\TLS :443)};
 
 %% Сервер (праворуч)
-\node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm] (api) at (10.5,0) {API Server\\(FastAPI, :8000)};
+\node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm] (api) at (10,0) {API Server\\(FastAPI, :8000)};
 
 %% Внутрішні модулі сервера
-\node[module, fill=green!5] (mauth) at (8.5,-2) {auth\\totp};
+\node[module, fill=green!5] (mauth) at (7.5,-2) {auth\\totp\\admin};
 \node[module, fill=green!5] (msess) at (10,-2) {sessions\\tasks};
-\node[module, fill=green!5] (mwg) at (11.5,-2) {wireguard};
-\node[module, fill=green!5] (madmin) at (10,-3.2) {admin};
+\node[module, fill=green!5] (mwg) at (12.5,-2) {wireguard};
 
 %% База даних
 \node[box, fill=yellow!15] (db) at (7.5,-4.2) {SQLite DB\\(WAL mode)};
 
 %% WireGuard інтерфейс
-\node[box, fill=purple!10] (wg0) at (11.5,-4.2) {WireGuard\\interface (wg0)\\UDP :51820};
+\node[box, fill=purple!10] (wg0) at (12.5,-4.2) {WireGuard\\interface (wg0)\\UDP :51820};
 
 %% З'єднання: CLI -> Caddy
 \draw[biarr] (cli) -- node[above, label]{HTTPS\\(:443)} (caddy);
@@ -131,12 +130,10 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \draw[arr] (api) -- (mauth);
 \draw[arr] (api) -- (msess);
 \draw[arr] (api) -- (mwg);
-\draw[arr] (api) -- (madmin);
 
 %% Модулі -> DB
 \draw[arr] (mauth) -- (db);
 \draw[arr] (msess) -- (db);
-\draw[arr] (madmin) -- (db);
 
 %% Модулі -> WireGuard
 \draw[arr] (mwg) -- (wg0);
@@ -147,7 +144,7 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 
 %% Рамка навколо серверних компонентів
 \begin{scope}[on background layer]
-  \node[group, fit=(api)(mauth)(msess)(mwg)(madmin)(db)(wg0),
+  \node[group, fit=(api)(mauth)(msess)(mwg)(db)(wg0),
         label={[font=\small, anchor=north east]north east:Контейнер vpn-server}] {};
 \end{scope}
 
