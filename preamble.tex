@@ -30,6 +30,11 @@
 %% --- Вирівнювання тексту ---
 \usepackage{microtype}
 
+%% --- Терпимість до неперенесених монопросторних ідентифікаторів ---
+\tolerance=2000                                  % default 200 — приймати «розтягнуті» рядки
+\setlength{\emergencystretch}{3em}               % запас для горизонтального розтягу
+\renewcommand{\_}{\textunderscore\allowbreak}    % дозвіл розриву після _ у texttt{}-ідентифікаторах
+
 %% --- Заголовки ---
 \usepackage{titlesec}
 
