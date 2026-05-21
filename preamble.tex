@@ -35,6 +35,11 @@
 \setlength{\emergencystretch}{3em}               % запас для горизонтального розтягу
 \renewcommand{\_}{\textunderscore\allowbreak}    % дозвіл розриву після _ у texttt{}-ідентифікаторах
 
+%% --- Запобігання вдовам/сиротам у верстці ---
+\widowpenalty=10000        % немає 1-рядкового хвоста вгорі сторінки
+\clubpenalty=10000         % немає 1-рядкового початку внизу сторінки
+\displaywidowpenalty=10000 % те саме для абзаців, що закінчуються display-math
+
 %% --- Заголовки ---
 \usepackage{titlesec}
 
