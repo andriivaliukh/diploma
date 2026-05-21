@@ -987,12 +987,12 @@ p95). Тунельне накладання WireGuard~--- як ядерного,
 \begin{table}[htbp]\centering
 \caption{Затримка у стані спокою (мс), N=5}
 \label{tab:perf_lat_idle}
-\begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
-\textbf{Сценарій} & \textbf{Медіана ± СКВ (мс)} & \textbf{p95 (мс)} & \textbf{Примітка} \\\hline
-Без VPN (базовий)     & $24{,}00 \pm 0{,}04$ & $24{,}08$ & еталон \\\hline
-WG plain (ядро)       & $24{,}20 \pm 0{,}00$ & $24{,}20$ & \\\hline
-Ця система (WG+2FA)   & $24{,}20 \pm 0{,}00$ & $24{,}20$ & \\\hline
-OpenVPN (AES-256-CBC) & $24{,}40 \pm 0{,}05$ & $24{,}40$ & \\\hline
+\begin{tabularx}{\textwidth}{|l|X|X|}\hline
+\textbf{Сценарій} & \textbf{Медіана ± СКВ (мс)} & \textbf{p95 (мс)} \\\hline
+Без VPN (базовий)     & $24{,}00 \pm 0{,}04$ & $24{,}08$ \\\hline
+WG plain (ядро)       & $24{,}20 \pm 0{,}00$ & $24{,}20$ \\\hline
+Ця система (WG+2FA)   & $24{,}20 \pm 0{,}00$ & $24{,}20$ \\\hline
+OpenVPN (AES-256-CBC) & $24{,}40 \pm 0{,}05$ & $24{,}40$ \\\hline
 \end{tabularx}\end{table}
 
 Під навантаженням iperf3 тунельне буферування стає помітним (табл.~\ref{tab:perf_lat_load}).
@@ -1007,12 +1007,12 @@ WireGuard-стеки демонструють \textit{bufferbloat} на рівн
 \begin{table}[htbp]\centering
 \caption{Затримка під навантаженням (мс), N=5}
 \label{tab:perf_lat_load}
-\begin{tabularx}{\textwidth}{|l|X|X|X|}\hline
-\textbf{Сценарій} & \textbf{p95 (мс)} & \textbf{\textit{Bufferbloat} (мс)} & \textbf{Примітка} \\\hline
-Без VPN (базовий)     & $24{,}20$ & $+0{,}12$ & еталон \\\hline
-WG plain (ядро)       & $26{,}60$ & $+2{,}40$ &  \\\hline
-Ця система (WG+2FA)   & $27{,}26$ & $+3{,}06$ &  \\\hline
-OpenVPN (AES-256-CBC) & $24{,}88$ & $+0{,}48$ &  \\\hline
+\begin{tabularx}{\textwidth}{|l|X|X|}\hline
+\textbf{Сценарій} & \textbf{p95 (мс)} & \textbf{\textit{Bufferbloat} (мс)} \\\hline
+Без VPN (базовий)     & $24{,}20$ & $+0{,}12$ \\\hline
+WG plain (ядро)       & $26{,}60$ & $+2{,}40$ \\\hline
+Ця система (WG+2FA)   & $27{,}26$ & $+3{,}06$ \\\hline
+OpenVPN (AES-256-CBC) & $24{,}88$ & $+0{,}48$ \\\hline
 \end{tabularx}\end{table}
 
 \subsection{Результати: пропускна здатність TCP та UDP}
