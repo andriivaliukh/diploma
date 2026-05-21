@@ -60,11 +60,19 @@
 Файл \texttt{Caddyfile} конфігурує зворотний проксі та автоматичне отримання
 TLS-сертифікатів.
 
-\lstinputlisting[
+\begin{lstlisting}[
   style=mystyle,
   language={},
   caption={Конфігурація зворотного проксі-сервера (\texttt{Caddyfile})},
-  label={lst:app_caddyfile}
-]{src/Caddyfile}
+  label={lst:app_caddyfile}]
+{
+    email andrii.v@knu.ua
+    default_sni {$VPN_DOMAIN:localhost}
+}
+
+{$VPN_DOMAIN:localhost} {
+    reverse_proxy vpn-server:8000
+}
+\end{lstlisting}
 
 \newpage
