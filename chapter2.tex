@@ -113,6 +113,7 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \node[module, fill=green!5] (mauth) at (8.5,-2) {auth\\totp};
 \node[module, fill=green!5] (msess) at (10,-2) {sessions\\tasks};
 \node[module, fill=green!5] (mwg) at (11.5,-2) {wireguard};
+\node[module, fill=green!5] (madmin) at (10,-3.2) {admin};
 
 %% База даних
 \node[box, fill=yellow!15] (db) at (7.5,-4.2) {SQLite DB\\(WAL mode)};
@@ -130,26 +131,34 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \draw[arr] (api) -- (mauth);
 \draw[arr] (api) -- (msess);
 \draw[arr] (api) -- (mwg);
+\draw[arr] (api) -- (madmin);
 
 %% Модулі -> DB
 \draw[arr] (mauth) -- (db);
 \draw[arr] (msess) -- (db);
+\draw[arr] (madmin) -- (db);
 
 %% Модулі -> WireGuard
 \draw[arr] (mwg) -- (wg0);
 
 %% CLI -> WireGuard (тунель) — routed below DB
 \draw[biarr, dashed] (wgclient.south) -- ++(0,-2.5) -| (wg0.south)
-  node[pos=0.25, below, label]{WireGuard тунель (UDP :51820)};
+  node[pos=0.5, below, label]{WireGuard тунель (UDP :51820)};
 
 %% Рамка навколо серверних компонентів
 \begin{scope}[on background layer]
-  \node[group, fit=(api)(mauth)(msess)(mwg)(db)(wg0),
+  \node[group, fit=(api)(mauth)(msess)(mwg)(madmin)(db)(wg0),
         label={[font=\small, anchor=north east]north east:Контейнер vpn-server}] {};
 \end{scope}
 
+%% Рамка навколо клієнтських компонентів
+\begin{scope}[on background layer]
+  \node[group, fit=(cli)(wgclient),
+        label={[font=\small, anchor=north west]north west:Клієнтське середовище}] {};
+\end{scope}
+
 \end{tikzpicture}
-\caption{Компонентна діаграма системи VPN з двофакторною автентифікацією}
+\caption{Компонентна діаграма системи VPN з двофакторною автентифікацією. Допоміжні модулі (\texttt{models}, \texttt{api}, \texttt{config}) опущено для наочності.}
 \label{fig:component_diagram}
 \end{figure}
 
