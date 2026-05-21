@@ -91,7 +91,7 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \begin{tikzpicture}[
   box/.style={rectangle, draw, thick, minimum width=2.8cm, minimum height=0.9cm,
               font=\small\bfseries, align=center, rounded corners=2pt},
-  module/.style={rectangle, draw, dashed, minimum width=2.0cm, minimum height=1.0cm,
+  module/.style={rectangle, draw, dashed, minimum width=2.0cm, minimum height=0.7cm,
               font=\footnotesize, align=center},
   arr/.style={-{Stealth[length=5pt]}, thick},
   biarr/.style={{Stealth[length=5pt]}-{Stealth[length=5pt]}, thick},
@@ -110,8 +110,8 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm] (api) at (10,0) {API Server\\(FastAPI, :8000)};
 
 %% Внутрішні модулі сервера
-\node[module, fill=green!5] (mauth) at (7.5,-2) {auth\\totp\\admin};
-\node[module, fill=green!5] (msess) at (10,-2) {sessions\\tasks};
+\node[module, fill=green!5, minimum width=4.0cm, minimum height=1.5cm] (mlogic) at (9,-2)
+  {\textbf{Бізнес-логіка}\\auth, totp, admin\\sessions, tasks};
 \node[module, fill=green!5] (mwg) at (12.5,-2) {wireguard};
 
 %% База даних
@@ -127,13 +127,11 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 \draw[biarr] (caddy) -- node[above, label]{HTTP\\(:8000)} (api);
 
 %% API -> Модулі
-\draw[arr] (api) -- (mauth);
-\draw[arr] (api) -- (msess);
+\draw[arr] (api) -- (mlogic);
 \draw[arr] (api) -- (mwg);
 
 %% Модулі -> DB
-\draw[arr] (mauth) -- (db);
-\draw[arr] (msess) -- (db);
+\draw[arr] (mlogic) -- (db);
 
 %% Модулі -> WireGuard
 \draw[arr] (mwg) -- (wg0);
@@ -144,7 +142,7 @@ Need It})~\cite{beck1999extreme}: архітектура відповідає п
 
 %% Рамка навколо серверних компонентів
 \begin{scope}[on background layer]
-  \node[group, fit=(api)(mauth)(msess)(mwg)(db)(wg0),
+  \node[group, fit=(api)(mlogic)(mwg)(db)(wg0),
         label={[font=\small, anchor=north east]north east:Контейнер vpn-server}] {};
 \end{scope}
 
