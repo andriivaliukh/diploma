@@ -233,9 +233,9 @@ HTTPS для управління автентифікацією та сесія
 \node[box, fill=purple!10](W)  at (9.5,0)  {WireGuard};
 
 %% Lifelines
-\draw[dashed, thin] (C.south)  -- ++(0,-13cm);
-\draw[dashed, thin] (A.south)  -- ++(0,-13cm);
-\draw[dashed, thin] (W.south)  -- ++(0,-13cm);
+\draw[dashed, thin] (C.south)  -- ++(0,-13.5cm);
+\draw[dashed, thin] (A.south)  -- ++(0,-13.5cm);
+\draw[dashed, thin] (W.south)  -- ++(0,-13.5cm);
 
 %% --- Блок 1: Реєстрація ---
 \node[note] at (-3.5,-0.8) {\textbf{Реєстрація}};
@@ -244,54 +244,54 @@ HTTPS для управління автентифікацією та сесія
 \coordinate (r1e) at ($(A.south)+(0,-0.9cm)$);
 \draw[arr] (r1s) -- (r1e) node[midway,above,label]{POST /auth/register\\$\{$username, password$\}$};
 
-\coordinate (r2s) at ($(A.south)+(0,-1.6cm)$);
-\coordinate (r2e) at ($(C.south)+(0,-1.6cm)$);
-\draw[retarr] (r2s) -- (r2e) node[midway,above,label]{$\{$user\_id, totp\_uri, qr\_png$\}$};
+\coordinate (r2s) at ($(A.south)+(0,-1.7cm)$);
+\coordinate (r2e) at ($(C.south)+(0,-1.7cm)$);
+\draw[retarr] (r2s) -- (r2e) node[midway,above,label]{$\{$user\_id, totp\_uri, totp\_secret, auth\_token$\}$};
 
-\coordinate (r3s) at ($(C.south)+(0,-2.3cm)$);
-\coordinate (r3e) at ($(A.south)+(0,-2.3cm)$);
+\coordinate (r3s) at ($(C.south)+(0,-2.7cm)$);
+\coordinate (r3e) at ($(A.south)+(0,-2.7cm)$);
 \draw[arr] (r3s) -- (r3e) node[midway,above,label]{POST /auth/totp/verify\\(реєстраційний код)};
 
-\coordinate (r4s) at ($(A.south)+(0,-3.0cm)$);
-\coordinate (r4e) at ($(C.south)+(0,-3.0cm)$);
+\coordinate (r4s) at ($(A.south)+(0,-3.5cm)$);
+\coordinate (r4e) at ($(C.south)+(0,-3.5cm)$);
 \draw[retarr] (r4s) -- (r4e) node[midway,above,label]{$\{$success: true$\}$};
 
 %% --- Блок 2: Вхід ---
-\node[note] at (-3.5,-4.0cm) {\textbf{Вхід (2FA)}};
+\node[note] at (-3.5,-4.5cm) {\textbf{Вхід (2FA)}};
 
-\coordinate (l1s) at ($(C.south)+(0,-4.2cm)$);
-\coordinate (l1e) at ($(A.south)+(0,-4.2cm)$);
+\coordinate (l1s) at ($(C.south)+(0,-4.7cm)$);
+\coordinate (l1e) at ($(A.south)+(0,-4.7cm)$);
 \draw[arr] (l1s) -- (l1e) node[midway,above,label]{POST /auth/login\\$\{$username, password$\}$};
 
-\coordinate (l2s) at ($(A.south)+(0,-4.9cm)$);
-\coordinate (l2e) at ($(C.south)+(0,-4.9cm)$);
+\coordinate (l2s) at ($(A.south)+(0,-5.5cm)$);
+\coordinate (l2e) at ($(C.south)+(0,-5.5cm)$);
 \draw[retarr] (l2s) -- (l2e) node[midway,above,label]{$\{$auth\_token (5хв, totp\_verify)$\}$};
 
-\coordinate (l3s) at ($(C.south)+(0,-5.6cm)$);
-\coordinate (l3e) at ($(A.south)+(0,-5.6cm)$);
+\coordinate (l3s) at ($(C.south)+(0,-6.5cm)$);
+\coordinate (l3e) at ($(A.south)+(0,-6.5cm)$);
 \draw[arr] (l3s) -- (l3e) node[midway,above,label]{POST /auth/totp/verify\\(Bearer: auth\_token)};
 
-\coordinate (l4s) at ($(A.south)+(0,-6.3cm)$);
-\coordinate (l4e) at ($(C.south)+(0,-6.3cm)$);
+\coordinate (l4s) at ($(A.south)+(0,-7.3cm)$);
+\coordinate (l4e) at ($(C.south)+(0,-7.3cm)$);
 \draw[retarr] (l4s) -- (l4e) node[midway,above,label]{$\{$access\_token (24год, full)$\}$};
 
 %% --- Блок 3: VPN-сесія ---
-\node[note] at (-3.5,-7.4cm) {\textbf{Встановлення тунелю}};
+\node[note] at (-3.5,-8.3cm) {\textbf{Встановлення тунелю}};
 
-\coordinate (v1s) at ($(C.south)+(0,-7.6cm)$);
-\coordinate (v1e) at ($(A.south)+(0,-7.6cm)$);
+\coordinate (v1s) at ($(C.south)+(0,-8.5cm)$);
+\coordinate (v1e) at ($(A.south)+(0,-8.5cm)$);
 \draw[arr] (v1s) -- (v1e) node[midway,above,label]{POST /vpn/sessions\\$\{$device\_name, client\_pubkey$\}$};
 
-\coordinate (v2s) at ($(A.south)+(0,-8.5cm)$);
-\coordinate (v2e) at ($(W.south)+(0,-8.5cm)$);
+\coordinate (v2s) at ($(A.south)+(0,-9.5cm)$);
+\coordinate (v2e) at ($(W.south)+(0,-9.5cm)$);
 \draw[arr] (v2s) -- (v2e) node[midway,above,label]{wg set wg0 peer};
 
-\coordinate (v3s) at ($(A.south)+(0,-9.4cm)$);
-\coordinate (v3e) at ($(C.south)+(0,-9.4cm)$);
+\coordinate (v3s) at ($(A.south)+(0,-10.5cm)$);
+\coordinate (v3e) at ($(C.south)+(0,-10.5cm)$);
 \draw[retarr] (v3s) -- (v3e) node[midway,above,label]{$\{$server\_pubkey, assigned\_ip,\\server\_endpoint, expires\_at$\}$};
 
-\coordinate (v4s) at ($(C.south)+(0,-10.4cm)$);
-\coordinate (v4e) at ($(W.south)+(0,-10.4cm)$);
+\coordinate (v4s) at ($(C.south)+(0,-11.7cm)$);
+\coordinate (v4e) at ($(W.south)+(0,-11.7cm)$);
 \draw[arr, double, double distance=1.5pt] (v4s) -- (v4e)
   node[midway,above,label]{WireGuard тунель (UDP :51820)};
 
