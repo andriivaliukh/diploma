@@ -1,0 +1,84 @@
+%% fig-planes.tex — Backup R2: Two-planes revocation diagram.
+%% Answers Q4 (stateless JWT) — shown on demand during Q&A.
+%% B1 fixes applied:
+%%   - English «terminated» → «розірвано»; «cleanup» → «очищення» (all Ukrainian).
+%%   - 60с note moved to y=-2.35 (was -1.9 = box bottom ≈ struck by border).
+%%   - Plane titles lifted to y=2.15 (were 1.7 = inside box top border).
+%%   - planeBox height enlarged to 4.4cm so internal steps have more air.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm,
+  planeBox/.style={%
+    draw=clInk, fill=clBg, line width=1.2pt, rounded corners=4pt,%
+    minimum width=5.8cm, minimum height=4.4cm, align=center, inner sep=8pt%
+  },%
+  stepNode/.style={%
+    draw=clInk, fill=clBg, line width=1pt, rounded corners=2pt,%
+    font=\small\sffamily, align=center, inner sep=4pt,%
+    minimum width=4.6cm%
+  }%
+]
+%%
+%% ── LEFT PLANE: Control plane ────────────────────────────────────────────────
+\node[planeBox] (CP) at (0, 0) {};
+%% Title lifted above box top (box half-height = 2.2; title at 2.15 = just above) ─
+\node[font=\small\sffamily\bfseries, text=clInk, above] at (0, 2.15)
+  {Площина керування};
+%%
+%% Steps inside
+\node[stepNode] (jwt) at (0, 0.85) {JWT stateless\\(без blacklist)};
+\node[stepNode, draw=clAccent, fill=clAccent!8] (rev) at (0, -0.3)
+  {API: відкликати сесію};
+%% Shrink font + shorten text so node sits fully inside planeBox (5.8cm wide)
+\node[stepNode, draw=clAccent, fill=clAccent!8,
+      font=\scriptsize\ttfamily] (del) at (0, -1.3)
+  {wg set \ldots{} remove};
+%%
+\draw[->, >=Stealth, line width=1pt, clInk] (jwt.south) -- (rev.north);
+\draw[->, >=Stealth, line width=1pt, clAccent] (rev.south) -- (del.north);
+%%
+%% 60с note — moved clear below box bottom (was at -1.9 = box border; fix B1) ──
+\node[font=\scriptsize\sffamily, text=clGrey, align=center] at (0, -2.35)
+  {(або: фонове очищення кожні 60\,с)};
+%%
+%% ── RIGHT PLANE: Data plane ───────────────────────────────────────────────────
+\node[planeBox] (DP) at (7.2, 0) {};
+%% Title lifted above box top ─────────────────────────────────────────────────
+\node[font=\small\sffamily\bfseries, text=clInk, above] at (7.2, 2.15)
+  {Площина даних};
+%%
+%% wg0 bus inside data plane
+\draw[wgbus] (4.8, 0.85) -- (9.6, 0.85);
+\node[font=\footnotesize\ttfamily, text=clGrey, right] at (9.65, 0.85)
+  {\texttt{wg0}};
+%%
+%% Present peer (filled accent)
+\node[wgpeer, minimum width=2.6cm, font=\scriptsize\sffamily\bfseries]
+  (peerOn) at (6.3, 0.85) {peer\,\cmark};
+%%
+%% Gone peer (hollow grey)
+\node[wggone, minimum width=2.6cm, font=\scriptsize\sffamily, text=clGrey]
+  (peerOff) at (8.1, 0.85) {peer};
+%%
+%% Remove arrow between states
+\draw[wgremove] (peerOn.east) -- (peerOff.west);
+\node[font=\scriptsize\sffamily, text=clGrey, above] at (7.2, 1.0)
+  {remove};
+%%
+%% Effect labels — Ukrainian only (fix B1) ──────────────────────────────────
+\node[font=\small\sffamily\bfseries, text=clAccent, align=center]
+  at (7.2, -0.25) {Тунель розірвано\\(миттєво)};
+%%
+\node[font=\scriptsize\sffamily, text=clGrey, align=center]
+  at (7.2, -1.05) {навіть з валідним JWT:\\трафік обрізано на рівні ядра};
+%%
+%% ── Arrow between planes ──────────────────────────────────────────────────────
+\draw[->, >=Stealth, line width=1.5pt, clAccent]
+  ($(del.east)+(0.08,0)$) -- ($(DP.west)+(0,-1.3)$);
+\node[font=\scriptsize\sffamily\bfseries, text=clAccent, above]
+  at (3.65, -1.3) {синхронно};
+%%
+%% ── Figure title ──────────────────────────────────────────────────────────────
+\node[font=\normalsize\sffamily\bfseries, text=clInk, align=center]
+  at (3.6, 2.9) {Відкликання: дві площини};
+%%
+\end{tikzpicture}

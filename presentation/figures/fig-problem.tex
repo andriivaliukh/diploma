@@ -1,0 +1,50 @@
+%% fig-problem.tex — Slide 2 «Проблема»
+%% Two-lane contrast: IPsec/OpenVPN (user auth) vs WireGuard (static key only).
+%% Baked-in callout: «ключ ≠ людина» → WireGuard key-check box.
+%% Lane labels use anchor=east (grow leftward) so box fills cannot clip them.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm,
+  lanenode/.style={wgbox, minimum width=2.8cm, minimum height=0.9cm,
+                   font=\small\sffamily},
+  laneauth/.style={lanenode, draw=clAccent, fill=clAccent!10, text=clAccent}
+]
+%%
+%% Lane y-centres and box x-centres (shifted right so labels clear boxes)
+\def\yTop{1.4}
+\def\yBot{-1.4}
+\def\xA{1.0}\def\xB{5.2}\def\xC{9.4}
+%%
+%% ── Lane labels: anchor=east so text grows LEFTWARD from the anchor point ─────
+%% Right edge of label is at x=-1.6; box left edges are at x=1.0-1.4=-0.4. Gap OK.
+\node[font=\small\sffamily\bfseries, text=clInk, align=right, anchor=east]
+  at (-1.6, \yTop) {IPsec /\\OpenVPN};
+\node[font=\small\sffamily\bfseries, text=clInk, align=right, anchor=east]
+  at (-1.6, \yBot) {WireGuard};
+%%
+%% ── TOP LANE: IPsec / OpenVPN ─────────────────────────────────────────────────
+\node[lanenode]  (TA) at (\xA, \yTop) {Користувач};
+\node[laneauth]  (TB) at (\xB, \yTop) {EAP / RADIUS\\/ LDAP};
+\node[lanenode]  (TC) at (\xC, \yTop) {Тунель};
+\draw[->, >=Stealth, line width=1.2pt, clInk] (TA.east) -- (TB.west);
+\draw[->, >=Stealth, line width=1.2pt, clInk] (TB.east) -- (TC.west);
+%% Subtle sub-label
+\node[font=\scriptsize, text=clGrey, align=center] at (\xB, 0.55)
+  {автентифікація користувача};
+%%
+%% ── BOTTOM LANE: WireGuard ────────────────────────────────────────────────────
+\node[lanenode]  (BA) at (\xA, \yBot) {Пакет};
+\node[lanenode, minimum width=3.5cm] (BB) at (\xB, \yBot)
+  {Перевірка\\статичного ключа};
+\node[lanenode]  (BC) at (\xC, \yBot) {Тунель};
+\draw[->, >=Stealth, line width=1.2pt, clInk] (BA.east) -- (BB.west);
+\draw[->, >=Stealth, line width=1.2pt, clInk] (BB.east) -- (BC.west);
+%%
+%% ── Callout: «ключ ≠ людина» → key-check box ─────────────────────────────────
+\draw[callout] (6.5, -2.9) -- (BB.south);
+\node[font=\normalsize\sffamily\bfseries, text=clAccent, align=center]
+  at (6.5, -3.25) {ключ $\neq$ людина};
+%%
+%% ── Horizontal lane divider ───────────────────────────────────────────────────
+\draw[clGrey!40, thin] (-3.2, 0) -- (10.8, 0);
+%%
+\end{tikzpicture}

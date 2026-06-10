@@ -1,0 +1,68 @@
+%% fig-architecture.tex — Backup Q&A: component diagram (architecture overview).
+%% SOURCE: adapted from chapter2.tex fig:component_diagram (lines 89-158).
+%% DO NOT MODIFY chapter2.tex — this is a standalone copy for the presentation.
+%%
+%% Kept as-is vs. thesis original: pastel fills retained for authenticity
+%% (committee may have the thesis open). Fonts bumped to sffamily for projection.
+%% Requires: \usetikzlibrary{fit, backgrounds, positioning, arrows.meta, calc}
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[
+  box/.style={rectangle, draw, thick, minimum width=2.8cm, minimum height=0.9cm,
+              font=\small\sffamily\bfseries, align=center, rounded corners=2pt},%
+  module/.style={rectangle, draw, dashed, minimum width=2.0cm, minimum height=0.7cm,
+              font=\footnotesize\sffamily, align=center},%
+  arr/.style={-{Stealth[length=5pt]}, thick},%
+  biarr/.style={{Stealth[length=5pt]}-{Stealth[length=5pt]}, thick},%
+  lbl/.style={font=\footnotesize\sffamily, align=center},%
+  grp/.style={draw, dashed, rounded corners=4pt, inner sep=8pt}%
+]
+%%
+%% ── External clients (left) ──────────────────────────────────────────────────
+\node[box, fill=blue!8]  (cli)      at (0,0)   {CLI-клієнт\\(Docker)};
+\node[box, fill=blue!8]  (wgclient) at (0,-3)  {WireGuard\\(клієнт)};
+%%
+%% ── Caddy reverse proxy (middle) ─────────────────────────────────────────────
+\node[box, fill=orange!15] (caddy) at (5,0)
+  {Caddy\\(зворотний проксі\\TLS\,:443)};
+%%
+%% ── API Server (right) ───────────────────────────────────────────────────────
+\node[box, fill=green!10, minimum width=3.2cm, minimum height=1.0cm]
+  (api) at (10,0) {API Server\\(FastAPI, :8000)};
+%%
+%% ── Internal server modules ───────────────────────────────────────────────────
+\node[module, fill=green!5, minimum width=4.0cm, minimum height=1.5cm]
+  (mlogic) at (9,-2) {\textbf{Бізнес-логіка}\\auth, totp, admin\\sessions, tasks};
+\node[module, fill=green!5] (mwg) at (12.5,-2) {wireguard};
+%%
+%% ── Database ──────────────────────────────────────────────────────────────────
+\node[box, fill=yellow!15] (db) at (7.5,-4.2) {SQLite DB\\(WAL mode)};
+%%
+%% ── WireGuard interface ───────────────────────────────────────────────────────
+\node[box, fill=purple!10] (wg0) at (12.5,-4.2)
+  {WireGuard\\interface (wg0)\\UDP\,:51820};
+%%
+%% ── Connections ───────────────────────────────────────────────────────────────
+%% Edge labels moved BELOW the arrows so they don't collide with group labels (fix B2)
+\draw[biarr] (cli)    -- node[below, lbl]{HTTPS\\(:443)}  (caddy);
+\draw[biarr] (caddy)  -- node[below, lbl]{HTTP\\(:8000)}  (api);
+\draw[arr]   (api)    -- (mlogic);
+\draw[arr]   (api)    -- (mwg);
+\draw[arr]   (mlogic) -- (db);
+\draw[arr]   (mwg)    -- (wg0);
+%% CLI → WireGuard tunnel (routed below DB)
+\draw[biarr, dashed] (wgclient.south) -- ++(0,-2.5) -| (wg0.south)
+  node[pos=0.5, below, lbl]{WireGuard тунель (UDP\,:51820)};
+%%
+%% ── Group boxes — labels lifted with yshift so they clear the border (fix B2) ──
+\begin{scope}[on background layer]
+  \node[grp, fit=(api)(mlogic)(mwg)(db)(wg0),
+        label={[font=\small\sffamily, anchor=south east, yshift=4pt]%
+               north east:Контейнер vpn-server}] {};
+\end{scope}
+\begin{scope}[on background layer]
+  \node[grp, fit=(cli)(wgclient),
+        label={[font=\small\sffamily, anchor=south west, yshift=4pt]%
+               north west:Клієнтське середовище}] {};
+\end{scope}
+%%
+\end{tikzpicture}

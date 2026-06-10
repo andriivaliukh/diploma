@@ -1,0 +1,97 @@
+%% presentation/figures/styles.tex
+%% Shared palette and TikZ node styles — loaded once in slides.tex preamble.
+%% Every fig-XXX.tex file assumes this has been \input{} before it.
+%% Canonical source: storyboard.md §«Палітра та кодування».
+%%
+%% ENCODING CONTRACT (projector-safe, colourblind-safe):
+%%   cmark / xmark  → redundant by GLYPH SHAPE; colour reinforces
+%%   add / remove   → redundant by LINE STYLE (solid / dashed); colour reinforces
+%%   present / gone → redundant by FILL (solid / hollow); colour reinforces
+%% No red or green used anywhere.
+%%
+%% NOTE: NO blank lines inside \tikzset{} — blank lines create \par which
+%% pgfkeys cannot handle.  Use %% comment lines as separators instead.
+\usepackage{pifont}    %% \ding{} for shape-encoded checkmark / cross
+%%
+%% ── Palette (3-colour: ink + accent + grey) ─────────────────────────────────
+\definecolor{clInk}{HTML}{1A1A1A}     % near-black  — text, lines, "present" nodes
+\definecolor{clAccent}{HTML}{1F3A5F}  % academic blue — accent, "our system", callouts
+\definecolor{clGrey}{HTML}{7A7A7A}    % medium grey  — secondary, "removed" nodes
+\definecolor{clBg}{HTML}{FFFFFF}      % background   — pure white slide background
+%%
+%% ── Marks: SHAPE is primary; colour is reinforcement only ───────────────────
+%% Bold checkmark glyph (ZapfDingbats 51) in accent blue
+\newcommand{\cmark}{\textcolor{clAccent}{\bfseries\ding{51}}}
+%% Bold cross glyph (ZapfDingbats 55) in mid-grey
+\newcommand{\xmark}{\textcolor{clGrey}{\bfseries\ding{55}}}
+%%
+%% ── Named TikZ styles ──────────────────────────────────────────────────────
+\tikzset{%
+  every picture/.append style={line cap=round, line join=round},%
+  %% wg0 bus line — identical thickness wherever it appears
+  wgbus/.style={draw=clInk, line width=2.5pt},%
+  %% Present peer / session node — THICK SOLID outline, light accent fill (session active)
+  %% Primary encoding: SOLID outline + light fill = present.
+  wgpeer/.style={%
+    draw=clAccent, fill=clAccent!15, line width=2pt,%
+    rounded corners=3pt,%
+    font=\small\sffamily\bfseries, text=clAccent,%
+    inner sep=5pt, minimum height=1.8em, minimum width=3.0em%
+  },%
+  %% Gone / removed peer — THICK DASHED outline, no fill (~60% grey) (session ended)
+  %% Primary encoding: DASHED outline + no fill = gone.
+  wggone/.style={%
+    draw=clGrey, fill=clBg, dashed, line width=2pt,%
+    rounded corners=3pt,%
+    font=\small\sffamily, text=clGrey,%
+    inner sep=5pt, minimum height=1.8em, minimum width=3.0em%
+  },%
+  %% Generic diagram box (server, client, protocol nodes)
+  wgbox/.style={%
+    draw=clInk, fill=clBg, line width=1.2pt,%
+    rounded corners=3pt,%
+    font=\normalsize\sffamily, inner sep=6pt, align=center%
+  },%
+  %% Small-font box for tighter layouts
+  wgboxsm/.style={%
+    draw=clInk, fill=clBg, line width=1pt,%
+    rounded corners=2pt,%
+    font=\small\sffamily, inner sep=4pt, align=center%
+  },%
+  %% 2FA lock / gate (accent colour)
+  lock/.style={%
+    draw=clAccent, fill=clAccent!12, line width=1.4pt,%
+    minimum width=2.2em, minimum height=2.2em,%
+    inner sep=5pt, rounded corners=2pt, align=center,%
+    font=\small\sffamily\bfseries, text=clAccent%
+  },%
+  %% Callout arrow (accent, baked-in annotation)
+  callout/.style={->, >=Stealth, line width=1.4pt, draw=clAccent, text=clAccent},%
+  %% Add arrow: SOLID accent — "session created"
+  %% Primary encoding: SOLID line = add.
+  wgadd/.style={->, >=Stealth, line width=1.5pt, draw=clAccent},%
+  %% Remove arrow: DASHED grey — "session terminated"
+  %% Primary encoding: DASHED line = remove.
+  wgremove/.style={->, >=Stealth, line width=1.5pt, draw=clGrey, dashed},%
+  %% Sequence-diagram lifeline (dashed grey vertical)
+  lifeline/.style={draw=clGrey, dashed, line width=0.8pt},%
+  %% Sequence-diagram actor box
+  actor/.style={%
+    draw=clInk, fill=clBg, line width=1.2pt,%
+    rounded corners=3pt, align=center,%
+    font=\small\sffamily\bfseries, inner sep=5pt, minimum width=2.6cm%
+  },%
+  %% Sequence-diagram message arrows
+  msg/.style={->, >=Stealth, line width=1.2pt, draw=clInk},%
+  msgret/.style={->, >=Stealth, line width=1.2pt, draw=clInk, dashed},%
+  %% Established tunnel (double-line accent)
+  tunnel/.style={->, >=Stealth, double, double distance=2pt, line width=1pt, draw=clAccent},%
+  %% Matrix header cell (filled ink)
+  mhdr/.style={fill=clInk!90, text=white, draw=clInk, font=\footnotesize\sffamily\bfseries, align=center, inner sep=3pt},%
+  %% Matrix "our system" header (filled accent)
+  mours/.style={fill=clAccent, text=white, draw=clAccent, font=\footnotesize\sffamily\bfseries, align=center, inner sep=3pt},%
+  %% Matrix data cell (plain)
+  mcell/.style={fill=clBg, draw=clGrey!50, font=\normalsize, align=center, inner sep=3pt},%
+  %% Matrix "our system" data cell (light accent fill)
+  mourscell/.style={fill=clAccent!8, draw=clAccent!40, font=\normalsize, align=center, inner sep=3pt}%
+}

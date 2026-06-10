@@ -1,0 +1,123 @@
+%% fig-matrix5.tex — Backup R1: Full 6-column × 4-row comparison matrix (Q&A).
+%% Shown on demand if committee asks about Firezone or Tailscale/Headscale.
+%% Columns: DefGuard · Firezone · NetBird · Tailscale · WAG · Наша система.
+%% Rows: WG-клієнт · Без IdP · Власний TOTP · Ключі.
+%% Canon: thesis-facts.md §7.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+%% ── Grid dimensions ──────────────────────────────────────────────────────────
+\def\cw{1.75}    % data column width (cm)
+\def\rw{3.30}    % row-header (criteria) column width — widened so «Власний TOTP» fits
+\def\rh{0.82}    % row height (cm)
+\def\hh{1.00}    % header row height (cm)
+
+%% Column x-centres
+\def\xCrit{{\rw/2}}
+\def\xDG{{\rw + \cw*0.5}}
+\def\xFZ{{\rw + \cw*1.5}}
+\def\xNB{{\rw + \cw*2.5}}
+\def\xTS{{\rw + \cw*3.5}}
+\def\xWAG{{\rw + \cw*4.5}}
+\def\xOurs{{\rw + \cw*5.5}}
+
+%% Row y-centres
+\def\yHdr{{-\hh/2}}
+\def\yRa{{-\hh - \rh*0.5}}
+\def\yRb{{-\hh - \rh*1.5}}
+\def\yRc{{-\hh - \rh*2.5}}
+\def\yRd{{-\hh - \rh*3.5}}
+
+%% Table dimensions
+\pgfmathsetmacro{\tW}{\rw + 6*\cw}
+\pgfmathsetmacro{\tH}{\hh + 4*\rh}
+
+%% ── Outer border ─────────────────────────────────────────────────────────────
+\draw[clInk, line width=1pt] (0, 0) rectangle (\tW, -\tH);
+
+%% ── Column dividers ──────────────────────────────────────────────────────────
+\foreach \x in {\rw, {\rw+\cw}, {\rw+2*\cw}, {\rw+3*\cw}, {\rw+4*\cw}, {\rw+5*\cw}} {
+  \draw[clGrey!50, thin] (\x, 0) -- (\x, -\tH);
+}
+
+%% ── Row dividers — precomputed to avoid -\y sign-distribution bug ────────────
+\pgfmathsetmacro{\rdivA}{\hh+\rh}
+\pgfmathsetmacro{\rdivB}{\hh+2*\rh}
+\pgfmathsetmacro{\rdivC}{\hh+3*\rh}
+\draw[clInk, line width=0.8pt] (0, -\hh) -- (\tW, -\hh);
+\draw[clGrey!50, thin] (0, -\rdivA) -- (\tW, -\rdivA);
+\draw[clGrey!50, thin] (0, -\rdivB) -- (\tW, -\rdivB);
+\draw[clGrey!50, thin] (0, -\rdivC) -- (\tW, -\rdivC);
+
+%% ── Header fills ─────────────────────────────────────────────────────────────
+\fill[clInk!80]  (0, 0) rectangle (\rw, -\hh);
+\fill[clInk!60]  (\rw, 0) rectangle ({\rw+5*\cw}, -\hh);
+\fill[clAccent]  ({\rw+5*\cw}, 0) rectangle (\tW, -\hh);
+\fill[clAccent!10] ({\rw+5*\cw}, -\hh) rectangle (\tW, -\tH);
+
+%% ── Re-draw borders ──────────────────────────────────────────────────────────
+\draw[clInk, line width=1pt]    (0, 0) rectangle (\tW, -\tH);
+\draw[clInk, line width=0.8pt]  (0, -\hh) -- (\tW, -\hh);
+\draw[clAccent, line width=1.2pt] ({\rw+5*\cw}, 0) rectangle (\tW, -\tH);
+
+%% ── Header text ──────────────────────────────────────────────────────────────
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xCrit, \yHdr) {Критерій};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xDG,   \yHdr) {Def-\\Guard};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xFZ,   \yHdr) {Fire-\\zone};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xNB,   \yHdr) {Net-\\Bird};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xTS,   \yHdr) {Tail-\\scale};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xWAG,  \yHdr) {WAG};
+\node[font=\scriptsize\sffamily\bfseries, text=white, align=center]
+  at (\xOurs, \yHdr) {Наша\\система};
+
+%% ── Row-header text ──────────────────────────────────────────────────────────
+\foreach \y/\label in {
+  \yRa/{WG-клієнт},
+  \yRb/{Без IdP},
+  \yRc/{Власний TOTP},
+  \yRd/{Ключі}
+}{
+  \node[font=\small\sffamily\bfseries, text=clInk, align=left,
+        right=0.10cm] at (0, \y) {\label};
+}
+
+%% ── Data cells ───────────────────────────────────────────────────────────────
+%% Row A: WG-клієнт — DG ✗ · FZ ✓ · NB ✗ · TS ✗ · WAG ✓ · Наша ✓
+\node[font=\normalsize] at (\xDG,   \yRa) {\xmark};
+\node[font=\normalsize] at (\xFZ,   \yRa) {\cmark};
+\node[font=\normalsize] at (\xNB,   \yRa) {\xmark};
+\node[font=\normalsize] at (\xTS,   \yRa) {\xmark};
+\node[font=\normalsize] at (\xWAG,  \yRa) {\cmark};
+\node[font=\normalsize] at (\xOurs, \yRa) {\cmark};
+
+%% Row B: Без IdP — DG ✓ · FZ ✗ · NB ✗ · TS ✗ · WAG ✓ · Наша ✓
+\node[font=\normalsize] at (\xDG,   \yRb) {\cmark};
+\node[font=\normalsize] at (\xFZ,   \yRb) {\xmark};
+\node[font=\normalsize] at (\xNB,   \yRb) {\xmark};
+\node[font=\normalsize] at (\xTS,   \yRb) {\xmark};
+\node[font=\normalsize] at (\xWAG,  \yRb) {\cmark};
+\node[font=\normalsize] at (\xOurs, \yRb) {\cmark};
+
+%% Row C: Власний TOTP — DG ✓ · FZ ✗ · NB ✗ · TS ✗ (OIDC/IdP) · WAG ✓ · Наша ✓
+\node[font=\normalsize] at (\xDG,   \yRc) {\cmark};
+\node[font=\normalsize] at (\xFZ,   \yRc) {\xmark};
+\node[font=\normalsize] at (\xNB,   \yRc) {\xmark};
+\node[font=\normalsize] at (\xTS,   \yRc) {\xmark};
+\node[font=\normalsize] at (\xWAG,  \yRc) {\cmark};
+\node[font=\normalsize] at (\xOurs, \yRc) {\cmark};
+
+%% Row D: Ключі — DG ✓ · FZ ✓ · NB ✓ · TS ✓ · WAG ✗ · Наша ✓
+\node[font=\normalsize] at (\xDG,   \yRd) {\cmark};
+\node[font=\normalsize] at (\xFZ,   \yRd) {\cmark};
+\node[font=\normalsize] at (\xNB,   \yRd) {\cmark};
+\node[font=\normalsize] at (\xTS,   \yRd) {\cmark};
+\node[font=\normalsize] at (\xWAG,  \yRd) {\xmark};
+\node[font=\normalsize] at (\xOurs, \yRd) {\cmark};
+
+\end{tikzpicture}

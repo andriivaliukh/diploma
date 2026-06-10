@@ -1,0 +1,62 @@
+%% fig-idea.tex — Slide 4 «Ідея» ★ the SYMBOL of the deck.
+%% «Session as Node»: a peer appears on wg0 ONLY after passing 2FA.
+%%
+%% Single-path left→right story (simplified per user feedback R3):
+%%   Клієнт+ключ →(недостатньо)→ 🔒 2FA → peer на wg0   [ONE state only]
+%% Removal shown as a footnote only — no competing second peer node.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm]
+%%
+%% ── SERVER NODE (left anchor of bus) ─────────────────────────────────────────
+\node[wgboxsm, minimum width=3.0cm] (server) at (1.5, 0)
+  {Сервер\\10.10.0.1};
+%%
+%% ── wg0 BUS — starts at server.east (no left-stub artefact) ─────────────────
+\draw[wgbus] (server.east) -- (11.0, 0);
+\node[font=\footnotesize\ttfamily, text=clGrey, above right] at (11.0, 0.1)
+  {\texttt{wg0}};
+%%
+%% ── 2FA LOCK GATE ────────────────────────────────────────────────────────────
+\node[lock, minimum width=2.0cm, minimum height=2.2cm] (lockbox) at (4.8, 0)
+  {\textbf{2FA}};
+%% Padlock shackle
+\draw[clAccent, line width=1.8pt]
+  ($(lockbox.north)+(+0.38,0)$)
+  -- ++(0, 0.42)
+  arc[radius=0.38, start angle=0, end angle=180]
+  -- ++(0, -0.42);
+%%
+%% ── CLIENT NODE (left of lock, off-bus) ──────────────────────────────────────
+\node[wgboxsm, minimum width=3.0cm] (client) at (2.8, -2.2)
+  {Клієнт\\+ публічний ключ};
+%% Dashed arrow client→lock (darkened locally for projector visibility)
+\draw[->, >=Stealth, line width=1.4pt, color=black!62, dashed]
+  (client.north) -- ($(lockbox.south west)!0.4!(lockbox.south east)$);
+%% «ключа недостатньо» — centred between lock-gate bottom (y=-1.1) and
+%% client-box top (y=-1.775); right edge ≈4.7 < 5, stays left of peer zone.
+\node[font=\footnotesize\sffamily, text=black!62, align=center]
+  at (3.0, -1.44) {ключа недостатньо};
+%%
+%% ── SESSION PEER: ONE state — solid, filled, on bus after the gate ───────────
+\node[wgpeer, minimum width=3.4cm] (peer) at (8.0, 0)
+  {10.10.0.x};
+%%
+%% ── ADD ACTION: solid accent arrow ↓ — session created ──────────────────────
+\draw[wgadd] (8.0, 2.8) -- (peer.north);
+\node[font=\small\ttfamily, text=clAccent, align=center]
+  at (8.0, 3.15) {\texttt{wg set wg0 peer \ldots}};
+%%
+%% ── REMOVAL FOOTNOTE (small grey text only — no node box, no arrow) ──────────
+%% Communicates the remove path without a competing second peer node.
+%% Removal footnote moved to y=-2.3 — clearly BELOW the «ключа недостатньо» line.
+\node[font=\footnotesize\sffamily, text=black!55, align=center]
+  at (8.0, -2.3)
+  {$\times$ при завершенні сесії:\\
+   \texttt{\ldots{} peer \ldots{} remove}};
+%%
+%% ── ANCHOR ────────────────────────────────────────────────────────────────────
+\node[font=\large\sffamily\bfseries, text=clAccent, align=center]
+  at (5.5, -3.5)
+  {Без зміни протоколу.\quad Без PSK.};
+%%
+\end{tikzpicture}

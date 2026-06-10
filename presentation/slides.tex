@@ -1,0 +1,373 @@
+%% =============================================================================
+%% presentation/slides.tex — Beamer deck for 5-min bachelor's defence
+%% Topic: VPN application with 2FA (WireGuard-based)
+%% Author: Валюх А.А.  |  Supervisor: Бойко Ю.В.  |  Kyiv 2026
+%%
+%% Engine: XeLaTeX (2 passes)
+%% Spec: storyboard.md R2 + thesis preamble.tex font mirror
+%% 7 main frames + appendix backup frames (R1–R6)
+%% =============================================================================
+
+\documentclass[aspectratio=43,14pt]{beamer}
+
+%% ─── Language & Fonts (mirror thesis preamble.tex) ───────────────────────────
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{ukrainian}
+\setotherlanguage{english}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont[Script=Default,Scale=MatchLowercase]{Courier New}
+\newfontfamily\cyrillicfonttt[Scale=MatchLowercase]{Courier New}
+
+%% ─── Graphics & TikZ ──────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\graphicspath{{../images/}}           % for R5 func-*.png screenshots
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,backgrounds,fit,shapes.geometric}
+
+%% ─── Figure scaling helper (max width/height, aspect-ratio preserved) ─────────
+\usepackage{adjustbox}
+
+%% ─── Tables ───────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+
+%% ─── Misc utility ─────────────────────────────────────────────────────────────
+\usepackage{xcolor}
+%% QR code for R7 backup frame (XeLaTeX-compatible; pure TikZ rendering)
+\usepackage[nolinks]{qrcode}
+
+%% ─── Beamer theme: default, strip ALL ornament ───────────────────────────────
+\usetheme{default}
+\usecolortheme{default}
+\usefonttheme{professionalfonts}   % honour fontspec setup, no Beamer substitution
+
+%% Remove every navigational / decorative element
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\setbeamertemplate{headline}{}
+\setbeamertemplate{background}{}
+\setbeamertemplate{sidebar right}{}
+\setbeamertemplate{sidebar left}{}
+
+%% Minimal frametitle: 1–2 word grey label, NO bar, NO border
+\setbeamertemplate{frametitle}{%
+  \vspace*{0.30em}%
+  {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}%
+   \insertframetitle\strut}%
+  \vspace*{-0.25em}%
+}
+
+%% ─── Colour palette (must match figures/styles.tex exactly) ─────────────────
+\definecolor{clInk}{HTML}{1A1A1A}
+\definecolor{clAccent}{HTML}{1F3A5F}
+\definecolor{clGrey}{HTML}{7A7A7A}
+\definecolor{clBg}{HTML}{FFFFFF}
+
+%% Apply palette to Beamer elements
+\setbeamercolor{normal text}{fg=clInk, bg=clBg}
+\setbeamercolor{frametitle}{fg=clGrey, bg=clBg}
+\setbeamercolor{structure}{fg=clAccent}
+\setbeamercolor{alerted text}{fg=clAccent}
+\setbeamercolor{itemize item}{fg=clAccent}
+\setbeamercolor{enumerate item}{fg=clAccent}
+\setbeamercolor{block title}{fg=clAccent, bg=clBg}
+\setbeamercolor{block body}{fg=clInk, bg=clBg}
+\usebeamercolor{normal text}
+
+%% Frametitle font: small sans-serif — label only, no banner
+\setbeamerfont{frametitle}{size=\small, series=\mdseries, family=\sffamily}
+
+%% ─── Shared TikZ styles (shared interface with diagram-dev) ──────────────────
+\input{figures/styles.tex}
+
+%% ─── Convenience macros ──────────────────────────────────────────────────────
+%% \cmark / \xmark defined in figures/styles.tex (pifont \ding{})
+\newcommand{\tstretch}[1]{\renewcommand{\arraystretch}{#1}}
+%% Max-fit a TikZ figure to slide content area (preserves aspect ratio)
+\newcommand{\fitfig}[1]{%
+  \begin{adjustbox}{max width=\textwidth, max totalheight=0.83\textheight,
+                    keepaspectratio, center}%
+    \input{figures/#1}%
+  \end{adjustbox}%
+}
+
+%% =============================================================================
+\begin{document}
+\setbeamercolor{background canvas}{bg=clBg}
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 1 — Титул                                         (12 с)
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[plain]
+  \centering
+  \vspace*{0.10em}
+  {\small\color{clInk}
+    Київський національний університет імені Тараса Шевченка}\\[0.12em]
+  {\footnotesize\color{clGrey}
+    Факультет радіофізики, електроніки та комп'ютерних систем\\[-0.02em]
+    Кафедра комп'ютерної інженерії}
+
+  \vspace{0.45em}
+  {\Large\bfseries\color{clAccent}
+    Розробка VPN-застосунку\\[0.08em]
+    з двофакторною автентифікацією\\[0.08em]
+    на основі протоколу WireGuard%
+  }
+
+  \vspace{0.55em}
+  {\normalsize\color{clInk}
+    \begin{tabular}{@{}r@{\;—\;}l@{}}
+      Виконав           & Валюх А.А.  \\[0.08em]
+      Науковий керівник & Бойко Ю.В.  \\
+    \end{tabular}
+  }
+
+  \vspace{0.25em}
+  {\small\color{clGrey} Київ\;—\;2026}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 2 — Проблема                                      (40 с)
+%%  One idea: WireGuard authenticates static keys, NOT users.
+%%  Text («ключ ≠ людина», lane labels) is baked into fig-problem.tex.
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Проблема}
+  \fitfig{fig-problem}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 3 — Конкуренти                                    (42 с)
+%%  One idea: no self-hosted solution covers all 4 criteria simultaneously.
+%%  Stub: fig-matrix4.tex shows placeholder until diagram-dev delivers.
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Конкуренти}
+  \fitfig{fig-matrix4}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 4 — Ідея  ★ SYMBOL                                (40 с)
+%%  One idea: «Session as Node» — peer on wg0 only while 2FA session active.
+%%  Anchor «Без зміни протоколу. Без PSK.» is baked into fig-idea.tex (y=-5.2).
+%%  Cycle: Rep. 1 (full thesis statement).
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Ідея}
+  \fitfig{fig-idea}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 5 — Як працює  ★ DENSE (hapax legomenon)          (75 с)
+%%  One idea: full two-step login flow and tunnel establishment.
+%%  5 exchanges; TTL annotations on slide; RFC/Fernet/HS256 details in notes.
+%%  Cycle: Rep. 2 — «механічно: два виклики subprocess».
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Як працює}
+  \fitfig{fig-sequence}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 6 — Результати                                    (48 с)
+%%  One idea: data plane = parity with plain WireGuard; 2FA cost is one-time.
+%%  Cycle: Rep. 3 — «тому й вимірюється нуль: протокол не змінено».
+%%  Numbers + anchor + callout «одноразово, не постійно» are baked into fig-results.tex.
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Результати}
+  \fitfig{fig-results}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 7 — Внесок  (LAST main slide; stays on screen during ALL Q&A)  (28 с)
+%%  One idea: what was done (past tense, 4 telegraphic bullets).
+%%  Cycle: Closing rep. — bullet 1 restates thesis in past tense.
+%%  NO «Дякую», NO «Питання?» frame after this.
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}
+  \frametitle{Внесок}
+  \vspace*{0.15em}
+  \begin{itemize}
+    \setlength{\itemsep}{0.40em}
+    \item \textbf{Запропоновано} модель «сесія як вузол» ---
+          2FA без зміни протоколу і без PSK.
+    \item \textbf{Реалізовано} повний стек (сервер + CLI);
+          149 автотестів, 7 функціональних --- успішно.
+    \item \textbf{Виміряно} паритет площини даних
+          (1\,\%\,/\,0\,\%); одноразовий онбординг --- 1571\,мс.
+    \item \textbf{Підготовлено} як відкрите self-hosted
+          (стандартний WG-клієнт, без зовнішнього IdP).
+  \end{itemize}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  APPENDIX — Резервні слайди (Q&A only, not counted in main flow)
+%% ══════════════════════════════════════════════════════════════════════════════
+\appendix
+
+%% ── R0: Архітектура системи ──────────────────────────────────────────────────
+%% Lifted from thesis chapter 2 (component diagram).
+%% Shown on demand if committee asks about system architecture.
+%% File delivered by diagram-dev; stub compiles until then.
+\begin{frame}[c]
+  \frametitle{Архітектура (резерв)}
+  \fitfig{fig-architecture}
+\end{frame}
+
+%% ── R1: Повна матриця 5×4 ────────────────────────────────────────────────────
+\begin{frame}[c]
+  \frametitle{Матриця 5×4 (резерв)}
+  \fitfig{fig-matrix5}
+\end{frame}
+
+%% ── R2: Дві площини — відкликання ────────────────────────────────────────────
+\begin{frame}[c]
+  \frametitle{Дві площини (резерв)}
+  \fitfig{fig-planes}
+\end{frame}
+
+%% ── R3: TOTP / JWT крипто-деталі ─────────────────────────────────────────────
+\begin{frame}
+  \frametitle{Крипто (резерв)}
+  \centering
+  \vspace*{0.5em}
+  {\small
+  \tstretch{1.45}
+  \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Компонент} & \textbf{Алгоритм} & \textbf{Параметри} \\
+    \midrule
+    TOTP
+      & RFC\;6238
+      & T0=0, X=30\,с, вікно ±1 крок \\
+    Хешування
+      & Argon2id
+      & RFC\_9106\_LOW: 3 іт., 64\,МіБ, p=4 \\
+    Секрет TOTP
+      & Fernet (AES-128-CBC\,+\,HMAC-SHA256)
+      & ключ з env через HKDF \\
+    Проміжний токен
+      & JWT HS256
+      & scope=totp\_verify, TTL 5\,хв \\
+    Повний токен
+      & JWT HS256
+      & scope=full, TTL 24\,год \\
+    \bottomrule
+  \end{tabularx}
+  }
+\end{frame}
+
+%% ── R4: OpenVPN-контраст ─────────────────────────────────────────────────────
+\begin{frame}
+  \frametitle{OpenVPN (резерв)}
+  \centering
+  \vspace*{0.5em}
+  {\small
+  \tstretch{1.5}
+  \begin{tabularx}{\textwidth}{@{}Xrrl@{}}
+    \toprule
+    \textbf{Метрика}
+      & \textbf{WG / Наша}
+      & \textbf{OpenVPN}
+      & \textbf{Відн.} \\
+    \midrule
+    tcp throughput, Мбіт/с  & 890 / 881 & 54{,}5    & \textbf{×16,3} \\
+    udp throughput, Мбіт/с  & 917 / 917 & 74{,}3    & \textbf{×12,3} \\
+    CPU / Мбіт, \%          & 0{,}023   & 0{,}240   & \textbf{×10,4} \\
+    \bottomrule
+  \end{tabularx}
+  }
+  \vspace{0.5em}
+  \par{\footnotesize\color{clGrey}
+    \%soft (mpstat, WG) vs \%cpu (pidstat, OpenVPN) ---
+    порівнянні лише через нормалізовану колонку «на Мбіт/с».}
+\end{frame}
+
+%% ── R5: Скриншоти функціонального тестування ─────────────────────────────────
+\begin{frame}
+  \frametitle{Функціональні тести (резерв)}
+  \centering
+  \vspace*{0.2em}
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.32\textheight,
+                       keepaspectratio]{func-07}\\[0.12em]
+      {\tiny\ttfamily wg show} {\tiny--- тунель активний}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.26\textheight,
+                       keepaspectratio]{func-08}\\[0.08em]
+      {\tiny\ttfamily curl ifconfig.me} {\tiny з тунелем}\\[0.3em]
+      \includegraphics[width=\linewidth,height=0.26\textheight,
+                       keepaspectratio]{func-09}\\[0.08em]
+      {\tiny без тунелю}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.20\textheight,
+                       keepaspectratio]{func-12}\\[0.05em]
+      {\tiny 400 --- невірний TOTP}\\[0.2em]
+      \includegraphics[width=\linewidth,height=0.20\textheight,
+                       keepaspectratio]{func-13}\\[0.05em]
+      {\tiny 403 --- не-адмін}\\[0.2em]
+      \includegraphics[width=\linewidth,height=0.20\textheight,
+                       keepaspectratio]{func-14}\\[0.05em]
+      {\tiny 401 --- без токена}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% ── R6: CPU-таблиця ──────────────────────────────────────────────────────────
+\begin{frame}
+  \frametitle{CPU (резерв)}
+  \centering
+  \vspace*{0.7em}
+  {\small
+  \tstretch{1.5}
+  \begin{tabularx}{\textwidth}{@{}Xrr@{}}
+    \toprule
+    \textbf{Конфігурація}
+      & \textbf{\%soft (CPU)}
+      & \textbf{На Мбіт/с} \\
+    \midrule
+    Наша система (Docker veth) & 34{,}80\;\% & 0{,}040\;\% \\
+    WireGuard plain (Docker veth) & 20{,}56\;\% & 0{,}023\;\% \\
+    \bottomrule
+  \end{tabularx}
+  \par\vspace{0.4em}
+  {\footnotesize\color{clGrey}
+    Різниця — Docker namespace (veth + netfilter), \textbf{не} від шифрування;
+    той самий \texttt{wireguard.ko}.}
+  }
+\end{frame}
+
+%% ── R7: Репозиторій (URL + QR) — LAST appendix frame ─────────────────────────
+%% Answers «де знайти код?»
+%% URL wrapped in \resizebox so the full string is always visible (never clipped).
+\begin{frame}[c]
+  \frametitle{Репозиторій (резерв)}
+  \centering
+  \vspace*{0.6em}
+  {\normalsize\color{clGrey} Відкритий код (self-hosted):}\\[0.7em]
+  \resizebox{0.9\textwidth}{!}{%
+    \bfseries\color{clAccent}%
+    \href{https://github.com/andriivaliukh/diploma}{%
+      \texttt{github.com/andriivaliukh/diploma}}}%
+  \par\vspace{1.0em}
+  \qrcode[height=2.5cm]{https://github.com/andriivaliukh/diploma}
+\end{frame}
+
+\end{document}

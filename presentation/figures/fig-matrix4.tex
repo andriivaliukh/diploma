@@ -1,0 +1,129 @@
+%% fig-matrix4.tex — Slide 3 «Конкуренти»: compact 4 rows × 4 columns matrix.
+%% Columns: DefGuard · NetBird · WAG · Наша система (accent).
+%% Rows: WG-клієнт · Без IdP · Власний TOTP · Ключі.
+%% Polarity: ✓ = good (clAccent glyph), ✗ = bad (clGrey glyph).
+%% Baked-in callout to «Наша система» column: «єдиний повний стовпець ✓».
+%% Glyph shape is PRIMARY encoding; colour reinforces only.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+%% ── Grid dimensions ──────────────────────────────────────────────────────────
+\def\cw{2.05}    % data column width (cm)
+\def\rw{3.50}    % row-header (criteria) column width — widened so «Власний TOTP» fits
+\def\rh{0.82}    % row height (cm)
+\def\hh{1.00}    % header row height (cm)
+
+%% Column x-centres (relative to x=0 at left edge)
+\def\xCrit{{\rw/2}}
+\def\xDG{{\rw + \cw*0.5}}
+\def\xNB{{\rw + \cw*1.5}}
+\def\xWAG{{\rw + \cw*2.5}}
+\def\xOurs{{\rw + \cw*3.5}}
+
+%% Row y-centres (y=0 at top; header at -\hh/2; rows below)
+\def\yHdr{{-\hh/2}}
+\def\yRa{{-\hh - \rh*0.5}}
+\def\yRb{{-\hh - \rh*1.5}}
+\def\yRc{{-\hh - \rh*2.5}}
+\def\yRd{{-\hh - \rh*3.5}}
+
+%% Total table dimensions
+\pgfmathsetmacro{\tW}{\rw + 4*\cw}
+\pgfmathsetmacro{\tH}{\hh + 4*\rh}
+
+%% ── Draw outer border ────────────────────────────────────────────────────────
+\draw[clInk, line width=1pt] (0, 0) rectangle (\tW, -\tH);
+
+%% ── Column dividers ──────────────────────────────────────────────────────────
+\foreach \x in {\rw, {\rw+\cw}, {\rw+2*\cw}, {\rw+3*\cw}} {
+  \draw[clGrey!50, thin] (\x, 0) -- (\x, -\tH);
+}
+
+%% ── Row dividers ─────────────────────────────────────────────────────────────
+%% IMPORTANT: precompute with \pgfmathsetmacro so -\rdivN is unambiguous.
+%% Using -\y inside \foreach when \y={expr} evaluates as -(first_term)+rest,
+%% placing lines at wrong (positive) y values — visible as stray rules above table.
+\pgfmathsetmacro{\rdivA}{\hh+\rh}
+\pgfmathsetmacro{\rdivB}{\hh+2*\rh}
+\pgfmathsetmacro{\rdivC}{\hh+3*\rh}
+\draw[clInk, line width=0.8pt] (0, -\hh) -- (\tW, -\hh);
+\draw[clGrey!50, thin] (0, -\rdivA) -- (\tW, -\rdivA);
+\draw[clGrey!50, thin] (0, -\rdivB) -- (\tW, -\rdivB);
+\draw[clGrey!50, thin] (0, -\rdivC) -- (\tW, -\rdivC);
+
+%% ── Header row fills ─────────────────────────────────────────────────────────
+%% Criteria column header
+\fill[clInk!80] (0, 0) rectangle (\rw, -\hh);
+%% DefGuard header
+\fill[clInk!60] (\rw, 0) rectangle ({\rw+\cw}, -\hh);
+%% NetBird header
+\fill[clInk!60] ({\rw+\cw}, 0) rectangle ({\rw+2*\cw}, -\hh);
+%% WAG header
+\fill[clInk!60] ({\rw+2*\cw}, 0) rectangle ({\rw+3*\cw}, -\hh);
+%% Наша система header (accent)
+\fill[clAccent] ({\rw+3*\cw}, 0) rectangle (\tW, -\hh);
+
+%% ── «Наша система» column data cells (light accent tint) ─────────────────────
+\fill[clAccent!10] ({\rw+3*\cw}, -\hh) rectangle (\tW, -\tH);
+
+%% ── Re-draw borders after fills ──────────────────────────────────────────────
+\draw[clInk, line width=1pt] (0, 0) rectangle (\tW, -\tH);
+\draw[clInk, line width=0.8pt] (0, -\hh) -- (\tW, -\hh);
+\draw[clAccent, line width=1.2pt] ({\rw+3*\cw}, 0) rectangle (\tW, -\tH);
+
+%% ── Header text ──────────────────────────────────────────────────────────────
+\node[font=\footnotesize\sffamily\bfseries, text=white, align=center]
+  at (\xCrit, \yHdr) {Критерій};
+\node[font=\footnotesize\sffamily\bfseries, text=white, align=center]
+  at (\xDG,   \yHdr) {DefGuard};
+\node[font=\footnotesize\sffamily\bfseries, text=white, align=center]
+  at (\xNB,   \yHdr) {NetBird};
+\node[font=\footnotesize\sffamily\bfseries, text=white, align=center]
+  at (\xWAG,  \yHdr) {WAG};
+\node[font=\footnotesize\sffamily\bfseries, text=white, align=center]
+  at (\xOurs, \yHdr) {Наша\\система};
+
+%% ── Row-header (criteria) text ───────────────────────────────────────────────
+\foreach \y/\label in {
+  \yRa/{WG-клієнт},
+  \yRb/{Без IdP},
+  \yRc/{Власний TOTP},
+  \yRd/{Ключі}
+}{
+  \node[font=\small\sffamily\bfseries, text=clInk, align=left,
+        right=0.15cm] at (0, \y) {\label};
+}
+
+%% ── Matrix data cells ────────────────────────────────────────────────────────
+%% Row A: WG-клієнт   — DefGuard ✗ · NetBird ✗ · WAG ✓ · Наша ✓
+\node[font=\large] at (\xDG,   \yRa) {\xmark};
+\node[font=\large] at (\xNB,   \yRa) {\xmark};
+\node[font=\large] at (\xWAG,  \yRa) {\cmark};
+\node[font=\large] at (\xOurs, \yRa) {\cmark};
+
+%% Row B: Без IdP     — DefGuard ✓ · NetBird ✗ · WAG ✓ · Наша ✓
+\node[font=\large] at (\xDG,   \yRb) {\cmark};
+\node[font=\large] at (\xNB,   \yRb) {\xmark};
+\node[font=\large] at (\xWAG,  \yRb) {\cmark};
+\node[font=\large] at (\xOurs, \yRb) {\cmark};
+
+%% Row C: Власний TOTP — DefGuard ✓ · NetBird ✗ (OIDC/IdP) · WAG ✓ · Наша ✓
+\node[font=\large] at (\xDG,   \yRc) {\cmark};
+\node[font=\large] at (\xNB,   \yRc) {\xmark};
+\node[font=\large] at (\xWAG,  \yRc) {\cmark};
+\node[font=\large] at (\xOurs, \yRc) {\cmark};
+
+%% Row D: Ключі       — DefGuard ✓ · NetBird ✓ · WAG ✗ · Наша ✓
+\node[font=\large] at (\xDG,   \yRd) {\cmark};
+\node[font=\large] at (\xNB,   \yRd) {\cmark};
+\node[font=\large] at (\xWAG,  \yRd) {\xmark};
+\node[font=\large] at (\xOurs, \yRd) {\cmark};
+
+%% ── Callout: «єдиний повний стовпець ✓» → «Наша система» column ────────────
+\draw[callout] ({\tW + 2.3}, {-\tH/2})
+               -- ({\tW + 0.1}, {-\tH/2});
+\node[font=\small\sffamily\bfseries, text=clAccent, align=left, right]
+  at ({\tW + 2.35}, {-\tH/2})
+  {єдиний повний\\стовпець \cmark};
+
+\end{tikzpicture}

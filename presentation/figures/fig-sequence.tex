@@ -1,0 +1,98 @@
+%% fig-sequence.tex — Slide 5 «Як працює» ★ HAPAX LEGOMENON (the one dense slide).
+%% SOURCE: adapted from chapter2.tex fig:auth_sequence (lines 223-305).
+%% DO NOT MODIFY chapter2.tex — this is a standalone copy, restyled for projection.
+%%
+%% Trimming vs. thesis original:
+%%   - «Реєстрацію» block (r1-r4) DROPPED — mentioned verbally only.
+%%   - «Вхід (2FA)» (l1-l4) + «Встановлення тунелю» (v1-v4) KEPT.
+%%   - Arrow labels shortened to ≤3 tokens (no JSON payloads).
+%%   - Pastel actor fills → our actor style (clInk border, white fill).
+%%   - arr/retarr → msg/msgret; double tunnel → tunnel style.
+%%   - No callout on v2 — presenter covers verbally.
+%%   - Only TTL annotations [5 хв] / [24 год] on slide (R2 rule).
+%% Labels are folded INTO \draw commands (node[midway,above]{...}) — avoids
+%% the origin-collapse bug that occurs with standalone \node[midway] at (x,y).
+%% Assumes styles.tex pre-loaded (calc + arrows.meta needed in outer preamble).
+\begin{tikzpicture}[x=1cm, y=1cm]
+%%
+%% ── Lifeline x-positions (matches thesis proportions) ────────────────────────
+\def\xC{0}    % Клієнт
+\def\xA{5.0}  % API Server
+\def\xW{9.5}  % WireGuard
+%%
+%% ── Actor boxes — deck palette (no pastel fills) ─────────────────────────────
+\node[actor, minimum width=2.6cm] (C) at (\xC, 0) {Клієнт};
+\node[actor, minimum width=2.6cm] (A) at (\xA, 0) {API Server};
+\node[actor, minimum width=2.6cm] (W) at (\xW, 0) {WireGuard};
+%%
+%% ── Lifelines (9.5 cm — covers all exchanges with room to spare) ─────────────
+\draw[lifeline] (C.south) -- ++(0,-9.5cm);
+\draw[lifeline] (A.south) -- ++(0,-9.5cm);
+\draw[lifeline] (W.south) -- ++(0,-9.5cm);
+%%
+%% ── Block label: Вхід (2FA) ──────────────────────────────────────────────────
+\node[font=\small\sffamily\bfseries, text=clGrey, align=right]
+  at (-1.8, -0.55) {\textbf{Вхід (2FA)}};
+%%
+%% ── l1: login (пароль)  C → A ────────────────────────────────────────────────
+\coordinate (l1s) at ($(C.south)+(0,-0.9cm)$);
+\coordinate (l1e) at ($(A.south)+(0,-0.9cm)$);
+\draw[msg] (l1s) -- (l1e)
+  node[midway, above, font=\small\sffamily] {login (пароль)};
+%%
+%% ── l2: проміжний токен  A → C  +  TTL [5 хв] ────────────────────────────────
+\coordinate (l2s) at ($(A.south)+(0,-1.9cm)$);
+\coordinate (l2e) at ($(C.south)+(0,-1.9cm)$);
+\draw[msgret] (l2s) -- (l2e)
+  node[midway, above, font=\small\sffamily] {проміжний токен};
+\node[font=\small\sffamily\bfseries, text=clAccent, right=0.2cm]
+  at ($(A.south)+(0,-1.9cm)$) {\textbf{[5 хв]}};
+%%
+%% ── l3: TOTP  C → A ──────────────────────────────────────────────────────────
+\coordinate (l3s) at ($(C.south)+(0,-3.1cm)$);
+\coordinate (l3e) at ($(A.south)+(0,-3.1cm)$);
+\draw[msg] (l3s) -- (l3e)
+  node[midway, above, font=\small\sffamily] {TOTP};
+%%
+%% ── l4: повний токен  A → C  +  TTL [24 год] ─────────────────────────────────
+\coordinate (l4s) at ($(A.south)+(0,-4.1cm)$);
+\coordinate (l4e) at ($(C.south)+(0,-4.1cm)$);
+\draw[msgret] (l4s) -- (l4e)
+  node[midway, above, font=\small\sffamily] {повний токен};
+\node[font=\small\sffamily\bfseries, text=clAccent, right=0.2cm]
+  at ($(A.south)+(0,-4.1cm)$) {\textbf{[24 год]}};
+%%
+%% ── Block label: Встановлення тунелю ─────────────────────────────────────────
+\node[font=\small\sffamily\bfseries, text=clGrey, align=right]
+  at (-1.8, -4.95) {\textbf{Тунель}};
+%%
+%% ── v1: сесія  C → A ─────────────────────────────────────────────────────────
+\coordinate (v1s) at ($(C.south)+(0,-5.4cm)$);
+\coordinate (v1e) at ($(A.south)+(0,-5.4cm)$);
+\draw[msg] (v1s) -- (v1e)
+  node[midway, above, font=\small\sffamily] {сесія};
+%%
+%% ── v2: wg set wg0 peer …  A → W  (accent, the KEY step) ────────────────────
+\coordinate (v2s) at ($(A.south)+(0,-6.5cm)$);
+\coordinate (v2e) at ($(W.south)+(0,-6.5cm)$);
+\draw[msg, draw=clAccent, line width=1.5pt] (v2s) -- (v2e)
+  node[midway, above, font=\small\ttfamily, text=clAccent]
+    {\texttt{wg set wg0 peer \ldots}};
+%%
+%% ── v3: дані сесії  A → C ────────────────────────────────────────────────────
+\coordinate (v3s) at ($(A.south)+(0,-7.6cm)$);
+\coordinate (v3e) at ($(C.south)+(0,-7.6cm)$);
+\draw[msgret] (v3s) -- (v3e)
+  node[midway, above, font=\small\sffamily] {дані сесії};
+%%
+%% ── v4: тунель  C ↔ W  (two parallel arrows = established bidirectional tunnel)
+\coordinate (v4s) at ($(C.south)+(0,-8.7cm)$);
+\coordinate (v4e) at ($(W.south)+(0,-8.7cm)$);
+\draw[tunnel] (v4s) -- (v4e)
+  node[midway, above, font=\small\sffamily\bfseries, text=clAccent]
+    {тунель (UDP\,:51820)};
+\coordinate (v4rs) at ($(W.south)+(0,-9.1cm)$);
+\coordinate (v4re) at ($(C.south)+(0,-9.1cm)$);
+\draw[tunnel] (v4rs) -- (v4re);
+%%
+\end{tikzpicture}
