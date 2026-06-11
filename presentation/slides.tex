@@ -217,8 +217,8 @@
   \frametitle{Порівняльний аналіз продуктивності}
   \vspace*{0.10em}
   {\small
-  \textbf{Стенд: дві VPS (Польща\;↔\;Німеччина), ядерний WireGuard;
-    базові лінії --- чистий WireGuard і OpenVPN.}
+  \textbf{Стенд: дві VPS (Польща\;↔\;Німеччина), WireGuard у ядрі Linux.
+    Порівняння з чистим WireGuard і OpenVPN.}
   \par\vspace{0.30em}
   Виміряно (повні таблиці --- у дипломній роботі):
   \begin{enumerate}
@@ -425,7 +425,7 @@
       & \textbf{На Мбіт/с} \\
     \midrule
     Наша система (Docker veth) & 34{,}80\;\% & 0{,}040\;\% \\
-    WireGuard plain (Docker veth) & 20{,}56\;\% & 0{,}023\;\% \\
+    чистий WireGuard (Docker veth) & 20{,}56\;\% & 0{,}023\;\% \\
     \bottomrule
   \end{tabularx}
   \par\vspace{0.4em}

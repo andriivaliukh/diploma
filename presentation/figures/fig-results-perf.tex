@@ -1,13 +1,13 @@
 %% fig-results-perf.tex — Slide 6 LEFT panel: data-plane parity.
 %% Standalone split from fig-results.tex (fig-results.tex is now deprecated).
-%% Grouped bars WG plain vs Наша система: tcp_t 890/881 Мбіт/с; tcp_p 917/917.
+%% Grouped bars чистий WG vs Наша система: tcp_t 890/881 Мбіт/с; tcp_p 917/917.
 %% Removed per split spec: «Той самий wireguard.ko» anchor, data-panel super-label,
 %% separator line, and all right-panel (onboarding) content.
 %% Assumes styles.tex pre-loaded.
 %%
 %% Data (canon thesis-facts.md §8):
-%%   tcp_t: WG-plain 890 | Наша система 881 Мбіт/с  → 1,0%
-%%   tcp_p: WG-plain 917 | Наша система 917 Мбіт/с  → 0%
+%%   tcp_t: WireGuard 890 | Наша система 881 Мбіт/с  → 1,0%
+%%   tcp_p: WireGuard 917 | Наша система 917 Мбіт/с  → 0%
 \begin{tikzpicture}[x=1cm, y=1cm]
 %%
 %% ── Scale: 917 Мбіт/с → 4.0 cm ──────────────────────────────────────────────
@@ -32,7 +32,7 @@
 %% ── tcp_t group ───────────────────────────────────────────────────────────────
 \pgfmathsetmacro{\htWGt}{890*\lscale}
 \pgfmathsetmacro{\htOSt}{881*\lscale}
-%% WG-plain bar
+%% WireGuard bar
 \fill[clInk!80]  ({\gTt-\bw-\bg/2}, 0) rectangle ({\gTt-\bg/2},  \htWGt);
 \draw[clInk, line width=0.4pt] ({\gTt-\bw-\bg/2},0) rectangle ({\gTt-\bg/2}, \htWGt);
 %% Our system bar
@@ -53,7 +53,7 @@
 %% ── tcp_p group ───────────────────────────────────────────────────────────────
 \pgfmathsetmacro{\htWGp}{917*\lscale}
 \pgfmathsetmacro{\htOSp}{917*\lscale}
-%% WG-plain bar
+%% WireGuard bar
 \fill[clInk!80]  ({\gTp-\bw-\bg/2}, 0) rectangle ({\gTp-\bg/2},  \htWGp);
 \draw[clInk, line width=0.4pt] ({\gTp-\bw-\bg/2},0) rectangle ({\gTp-\bg/2}, \htWGp);
 %% Our system bar
@@ -73,7 +73,7 @@
 %%
 %% ── Legend ───────────────────────────────────────────────────────────────────
 \fill[clInk!80]  (0.3, 4.95) rectangle (0.75, 5.2);
-\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.075) {WG plain};
+\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.075) {чистий WG};
 \fill[clAccent]  (2.7, 4.95) rectangle (3.15, 5.2);
 \node[font=\footnotesize\sffamily, text=clAccent, right] at (3.20, 5.075) {Наша система};
 %%
