@@ -128,7 +128,8 @@
   }
 
   \vspace{0.55em}
-  {\normalsize\color{clInk}%
+  \resizebox{0.9\textwidth}{!}{%
+    \normalsize\color{clInk}%
     \begin{tabular}{@{}r@{\;—\;}l@{}}
       Студент 4-го курсу & Валюх Андрій Андрійович \\[0.08em]
       Науковий керівник  & Бойко Юрій Володимирович \\
@@ -210,14 +211,50 @@
 
 
 %% ══════════════════════════════════════════════════════════════════════════════
-%%  SLIDE 6 — Результати                                    (48 с)
-%%  One idea: data plane = parity with plain WireGuard; 2FA cost is one-time.
-%%  Cycle: Rep. 3 — «тому й вимірюється нуль: протокол не змінено».
-%%  Numbers + anchor + callout «одноразово, не постійно» are baked into fig-results.tex.
+%%  SLIDE 7 — Тестування
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[shrink=15]
+  \frametitle{Порівняльний аналіз продуктивності}
+  \vspace*{0.10em}
+  {\small
+  \textbf{Стенд: дві VPS (Польща\;↔\;Німеччина), ядерний WireGuard;
+    базові лінії --- чистий WireGuard і OpenVPN.}
+  \par\vspace{0.30em}
+  Виміряно (повні таблиці --- у дипломній роботі):
+  \begin{enumerate}
+    \setlength{\itemsep}{0.15em}
+    \item Затримка --- у спокої та під навантаженням
+    \item Пропускна здатність --- TCP (1 і 4 потоки) та UDP
+    \item Завантаження CPU сервера
+    \item Час встановлення з'єднання
+  \end{enumerate}
+  \par\vspace{0.30em}
+  {\color{clAccent}\bfseries Ключові результати →}
+  }%
+\end{frame}
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 8 — Результати: продуктивність
+%%  Data-plane parity: tcp_t 890→881 Мбіт/с (1%), tcp_p 917=917 (0%).
+%%  Figure: fig-results-perf.tex (diagram-dev, frozen filename).
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[c]
-  \frametitle{Результати}
-  \fitfig{fig-results}
+  \frametitle{Результати: продуктивність}
+  \fitfig{fig-results-perf}
+  \par\vspace{0.4em}
+  \begin{center}
+    {\small\bfseries\color{clAccent} Паритет із чистим WireGuard\;(≤1\,\%)}
+  \end{center}
+\end{frame}
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 7 — Результати: час підключення
+%%  Control-plane cost: onboarding 92 → 1571 мс (×17), one-time only.
+%%  Figure: fig-results-onboarding.tex (diagram-dev, frozen filename).
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}[c]
+  \frametitle{Результати: час підключення}
+  \fitfig{fig-results-onboarding}
 \end{frame}
 
 
@@ -228,20 +265,23 @@
 %%  NO «Дякую», NO «Питання?» frame after this.
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[shrink=15]
-  \frametitle{Внесок}
+  \frametitle{Висновки}
   \vspace*{0.10em}
   {\small
-  \begin{itemize}
+  \begin{enumerate}
     \setlength{\itemsep}{0.15em}
-    \item \textbf{Запропоновано} модель «сесія як вузол» ---
-          2FA без зміни протоколу і без PSK.
-    \item \textbf{Реалізовано} повний стек (сервер + CLI);
-          149 автотестів, 7 функціональних --- успішно.
-    \item \textbf{Виміряно} паритет площини даних
-          (1\,\%\,/\,0\,\%); одноразовий онбординг --- 1571\,мс.
-    \item \textbf{Підготовлено} як відкрите self-hosted
-          (стандартний WG-клієнт, без зовнішнього IdP).
-  \end{itemize}
+    \item \textbf{Обґрунтовано вибір WireGuard} --- продуктивність,
+          безпека, мінімальний обсяг коду.
+    \item \textbf{Показано, що жодне наявне рішення} не поєднує
+          стандартний WG-клієнт, власний TOTP, керування ключами й
+          незалежність від IdP --- цю прогалину закриває розроблена
+          система.
+    \item \textbf{Підтверджено паритет продуктивності} з чистим
+          WireGuard (≤1\,\%); вартість 2FA --- одноразові 1571\,мс
+          проти 92\,мс при першому підключенні.
+    \item \textbf{Запропоновано модель «сесія як вузол»} --- 2FA без
+          зміни протоколу і без PSK.
+  \end{enumerate}
   }%
   \vspace{0.25em}
   \begin{center}
@@ -272,9 +312,9 @@
   \fitfig{fig-matrix5}
 \end{frame}
 
-%% ── R2: Дві площини — відкликання ────────────────────────────────────────────
+%% ── R2: Відкликання доступу ──────────────────────────────────────────────────
 \begin{frame}[c]
-  \frametitle{Дві площини (резерв)}
+  \frametitle{Відкликання доступу (резерв)}
   \fitfig{fig-planes}
 \end{frame}
 

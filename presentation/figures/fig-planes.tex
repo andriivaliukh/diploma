@@ -22,7 +22,7 @@
 \node[planeBox] (CP) at (0, 0) {};
 %% Title lifted above box top (box half-height = 2.2; title at 2.15 = just above) ─
 \node[font=\small\sffamily\bfseries, text=clInk, above] at (0, 2.15)
-  {Площина керування};
+  {Канал керування};
 %%
 %% Steps inside
 \node[stepNode] (jwt) at (0, 0.85) {JWT stateless\\(без blacklist)};
@@ -44,7 +44,7 @@
 \node[planeBox] (DP) at (7.2, 0) {};
 %% Title lifted above box top ─────────────────────────────────────────────────
 \node[font=\small\sffamily\bfseries, text=clInk, above] at (7.2, 2.15)
-  {Площина даних};
+  {Канал даних};
 %%
 %% wg0 bus inside data plane
 \draw[wgbus] (4.8, 0.85) -- (9.6, 0.85);
@@ -79,6 +79,6 @@
 %%
 %% ── Figure title ──────────────────────────────────────────────────────────────
 \node[font=\normalsize\sffamily\bfseries, text=clInk, align=center]
-  at (3.6, 2.9) {Відкликання: дві площини};
+  at (3.6, 2.9) {Відкликання: керування і дані};
 %%
 \end{tikzpicture}

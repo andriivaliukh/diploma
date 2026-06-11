@@ -1,0 +1,62 @@
+%% fig-results-onboarding.tex — Slide 6 RIGHT panel: onboarding overhead ×17.
+%% Standalone split from fig-results.tex (fig-results.tex is now deprecated).
+%% Bars 92 мс (WG plain) vs 1571 мс (Наша система); ×17; callout «одноразово».
+%% Removed per split spec: control-channel super-label, separator line,
+%% rxo offset (bars now at standalone origin starting near x=0).
+%% Assumes styles.tex pre-loaded.
+%%
+%% Data (canon thesis-facts.md §8):
+%%   WG-plain 92 мс  |  Наша система 1571 мс  → ×17
+\begin{tikzpicture}[x=1cm, y=1cm]
+%%
+%% ── Scale: 1571 мс → 4.0 cm ──────────────────────────────────────────────────
+\pgfmathsetmacro{\rscale}{4.0/1571}
+%%
+%% ── Bar geometry (re-anchored to standalone origin) ──────────────────────────
+\def\bw{0.55}   % bar width
+\def\bg{0.12}   % gap between bars in a pair
+\def\rxo{0.15}  % y-axis x (was 5.6 in the combined figure)
+\def\rbx{1.2}   % bar-pair centre (was 6.6 in the combined figure)
+%%
+%% ── Y-axis ────────────────────────────────────────────────────────────────────
+\draw[->, >=Stealth, thin, clInk] (\rxo,0) -- (\rxo,4.6);
+\node[font=\scriptsize\sffamily, text=clGrey, rotate=90, above] at ({\rxo-0.2}, 2.3)
+  {мс};
+%% X-axis
+\draw[thin, clInk] (\rxo,0) -- ({\rxo+2.4},0);
+%%
+%% ── Onboarding bars ───────────────────────────────────────────────────────────
+\pgfmathsetmacro{\htWGon}{92*\rscale}
+\pgfmathsetmacro{\htOSon}{1571*\rscale}
+%% WG-plain bar (very short ~0.23 cm — visual emphasis on ×17 gap)
+\fill[clInk!80]  ({\rbx-\bw-\bg/2}, 0) rectangle ({\rbx-\bg/2}, \htWGon);
+\draw[clInk, line width=0.4pt]
+  ({\rbx-\bw-\bg/2},0) rectangle ({\rbx-\bg/2}, \htWGon);
+\node[font=\tiny\sffamily, text=clInk, above]
+  at ({\rbx-\bw/2-\bg/2}, \htWGon) {92};
+%% Our system bar (full height)
+\fill[clAccent]  ({\rbx+\bg/2}, 0) rectangle ({\rbx+\bw+\bg/2}, \htOSon);
+\draw[clAccent, line width=0.4pt]
+  ({\rbx+\bg/2},0) rectangle ({\rbx+\bw+\bg/2}, \htOSon);
+\node[font=\scriptsize\sffamily, text=white]
+  at ({\rbx+\bw/2+\bg/2}, {\htOSon-0.22}) {1571};
+%% ×17 label above accent bar
+\node[font=\small\sffamily\bfseries, text=clAccent, above]
+  at ({\rbx+\bw/2+\bg/2}, \htOSon+0.04) {\(\times\)17};
+%% X-axis label removed; bars identified by legend below.
+%%
+%% ── Legend — same swatch style as fig-results-perf for consistency ───────────
+\fill[clInk!80]  (0.3, 4.95) rectangle (0.75, 5.2);
+\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.075) {WG plain};
+\fill[clAccent]  (2.7, 4.95) rectangle (3.15, 5.2);
+\node[font=\footnotesize\sffamily, text=clAccent, right] at (3.20, 5.075) {Наша система};
+%%
+%% ── Callout: «одноразово, не постійно» ───────────────────────────────────────
+\draw[callout]
+  ({\rbx+\bw+\bg/2+1.6}, {\htOSon*0.52})
+  -- ({\rbx+\bw+\bg/2+0.1}, {\htOSon*0.52});
+\node[font=\footnotesize\sffamily\bfseries, text=clAccent,
+      align=left, right] at ({\rbx+\bw+\bg/2+1.65}, {\htOSon*0.52})
+  {одноразово,\\не постійно};
+%%
+\end{tikzpicture}

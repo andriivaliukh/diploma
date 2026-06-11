@@ -1,0 +1,80 @@
+%% fig-results-perf.tex — Slide 6 LEFT panel: data-plane parity.
+%% Standalone split from fig-results.tex (fig-results.tex is now deprecated).
+%% Grouped bars WG plain vs Наша система: tcp_t 890/881 Мбіт/с; tcp_p 917/917.
+%% Removed per split spec: «Той самий wireguard.ko» anchor, data-panel super-label,
+%% separator line, and all right-panel (onboarding) content.
+%% Assumes styles.tex pre-loaded.
+%%
+%% Data (canon thesis-facts.md §8):
+%%   tcp_t: WG-plain 890 | Наша система 881 Мбіт/с  → 1,0%
+%%   tcp_p: WG-plain 917 | Наша система 917 Мбіт/с  → 0%
+\begin{tikzpicture}[x=1cm, y=1cm]
+%%
+%% ── Scale: 917 Мбіт/с → 4.0 cm ──────────────────────────────────────────────
+\pgfmathsetmacro{\lscale}{4.0/917}
+%%
+%% ── Bar geometry ─────────────────────────────────────────────────────────────
+\def\bw{0.55}   % bar width
+\def\bg{0.12}   % gap between bars in a pair
+\def\gTt{1.2}   % tcp_t group centre
+\def\gTp{3.2}   % tcp_p group centre
+%%
+%% ── Y-axis ────────────────────────────────────────────────────────────────────
+\draw[->, >=Stealth, thin, clInk] (0.15,0) -- (0.15,4.6);
+\node[font=\scriptsize\sffamily, text=clGrey, rotate=90, above] at (-0.05, 2.3)
+  {Мбіт/с};
+%% Reference grid line at 917
+\draw[clGrey!30, thin] (0.15, 4.0) -- (4.8, 4.0);
+\node[font=\tiny, text=clGrey, left] at (0.10, 4.0) {917};
+%% X-axis
+\draw[thin, clInk] (0.15,0) -- (4.8,0);
+%%
+%% ── tcp_t group ───────────────────────────────────────────────────────────────
+\pgfmathsetmacro{\htWGt}{890*\lscale}
+\pgfmathsetmacro{\htOSt}{881*\lscale}
+%% WG-plain bar
+\fill[clInk!80]  ({\gTt-\bw-\bg/2}, 0) rectangle ({\gTt-\bg/2},  \htWGt);
+\draw[clInk, line width=0.4pt] ({\gTt-\bw-\bg/2},0) rectangle ({\gTt-\bg/2}, \htWGt);
+%% Our system bar
+\fill[clAccent]  ({\gTt+\bg/2}, 0) rectangle ({\gTt+\bw+\bg/2}, \htOSt);
+\draw[clAccent, line width=0.4pt] ({\gTt+\bg/2},0) rectangle ({\gTt+\bw+\bg/2}, \htOSt);
+%% Value labels inside bars
+\node[font=\scriptsize\sffamily, text=white]
+  at ({\gTt-\bw/2-\bg/2}, {\htWGt-0.22}) {890};
+\node[font=\scriptsize\sffamily, text=white]
+  at ({\gTt+\bw/2+\bg/2}, {\htOSt-0.22}) {881};
+%% Delta annotation above
+\node[font=\scriptsize\sffamily\bfseries, text=clAccent, above]
+  at (\gTt, \htWGt+0.04) {1{,}0\,\%};
+%% X label
+\node[font=\footnotesize\sffamily, text=clInk, below, align=center]
+  at (\gTt, -0.15) {1 потік};
+%%
+%% ── tcp_p group ───────────────────────────────────────────────────────────────
+\pgfmathsetmacro{\htWGp}{917*\lscale}
+\pgfmathsetmacro{\htOSp}{917*\lscale}
+%% WG-plain bar
+\fill[clInk!80]  ({\gTp-\bw-\bg/2}, 0) rectangle ({\gTp-\bg/2},  \htWGp);
+\draw[clInk, line width=0.4pt] ({\gTp-\bw-\bg/2},0) rectangle ({\gTp-\bg/2}, \htWGp);
+%% Our system bar
+\fill[clAccent]  ({\gTp+\bg/2}, 0) rectangle ({\gTp+\bw+\bg/2}, \htOSp);
+\draw[clAccent, line width=0.4pt] ({\gTp+\bg/2},0) rectangle ({\gTp+\bw+\bg/2}, \htOSp);
+%% Value labels inside bars
+\node[font=\scriptsize\sffamily, text=white]
+  at ({\gTp-\bw/2-\bg/2}, {\htWGp-0.22}) {917};
+\node[font=\scriptsize\sffamily, text=white]
+  at ({\gTp+\bw/2+\bg/2}, {\htOSp-0.22}) {917};
+%% Delta annotation
+\node[font=\scriptsize\sffamily\bfseries, text=clAccent, above]
+  at (\gTp, \htWGp+0.04) {0\,\%};
+%% X label
+\node[font=\footnotesize\sffamily, text=clInk, below, align=center]
+  at (\gTp, -0.15) {4 потоки};
+%%
+%% ── Legend ───────────────────────────────────────────────────────────────────
+\fill[clInk!80]  (0.3, 4.95) rectangle (0.75, 5.2);
+\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.075) {WG plain};
+\fill[clAccent]  (2.7, 4.95) rectangle (3.15, 5.2);
+\node[font=\footnotesize\sffamily, text=clAccent, right] at (3.20, 5.075) {Наша система};
+%%
+\end{tikzpicture}
