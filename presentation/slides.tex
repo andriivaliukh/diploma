@@ -46,7 +46,13 @@
 
 %% Remove every navigational / decorative element
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{footline}{}
+%% Minimal footline: frame number only, bottom-right, grey, discreet.
+%% clGrey is a \definecolor name — use \textcolor, not \usebeamercolor.
+%% [plain] frames (title) suppress this automatically; also wrapped explicitly below.
+\setbeamertemplate{footline}{%
+  \hfill\textcolor{clGrey}{\scriptsize\insertframenumber}\hspace{1.2em}%
+  \vspace{0.8em}%
+}
 \setbeamertemplate{headline}{}
 \setbeamertemplate{background}{}
 \setbeamertemplate{sidebar right}{}
@@ -101,53 +107,80 @@
 %% ══════════════════════════════════════════════════════════════════════════════
 %%  SLIDE 1 — Титул                                         (12 с)
 %% ══════════════════════════════════════════════════════════════════════════════
+%% Title frame: footline explicitly blanked in addition to [plain], belt-and-braces.
+{
+\setbeamertemplate{footline}{}
 \begin{frame}[plain]
   \centering
   \vspace*{0.10em}
-  {\small\color{clInk}
-    Київський національний університет імені Тараса Шевченка}\\[0.12em]
+  \resizebox{\textwidth}{!}{%
+    {\small\color{clInk}
+      Київський національний університет імені Тараса Шевченка}}\\[0.12em]
   {\footnotesize\color{clGrey}
     Факультет радіофізики, електроніки та комп'ютерних систем\\[-0.02em]
     Кафедра комп'ютерної інженерії}
 
   \vspace{0.45em}
-  {\Large\bfseries\color{clAccent}
+  {\large\bfseries\color{clAccent}
     Розробка VPN-застосунку\\[0.08em]
     з двофакторною автентифікацією\\[0.08em]
     на основі протоколу WireGuard%
   }
 
   \vspace{0.55em}
-  {\normalsize\color{clInk}
+  {\normalsize\color{clInk}%
     \begin{tabular}{@{}r@{\;—\;}l@{}}
-      Виконав           & Валюх А.А.  \\[0.08em]
-      Науковий керівник & Бойко Ю.В.  \\
-    \end{tabular}
-  }
+      Студент 4-го курсу & Валюх Андрій Андрійович \\[0.08em]
+      Науковий керівник  & Бойко Юрій Володимирович \\
+    \end{tabular}}
 
   \vspace{0.25em}
   {\small\color{clGrey} Київ\;—\;2026}
 \end{frame}
+} %% end footline-blank group for title frame
 
 
 %% ══════════════════════════════════════════════════════════════════════════════
-%%  SLIDE 2 — Проблема                                      (40 с)
+%%  SLIDE 2 — Мета, об'єкт і предмет дослідження  (user-override: text-dense)
+%% ══════════════════════════════════════════════════════════════════════════════
+\begin{frame}
+  \frametitle{Мета, об'єкт і предмет дослідження}
+  \small
+  \begin{itemize}
+    \setlength{\itemsep}{0.55em}
+    \item \textbf{Мета роботи} --- розробка VPN-застосунку з двофакторною
+      автентифікацією на основі протоколу WireGuard, що поєднує захищене
+      тунелювання мережевого трафіку з надійним механізмом автентифікації
+      користувача.
+    \item \textbf{Об'єкт дослідження} --- процес автентифікації користувачів
+      у VPN-мережах.
+    \item \textbf{Предмет дослідження} --- інтеграція двофакторної
+      автентифікації з протоколом WireGuard.
+    \item \textbf{Методи дослідження} --- порівняльний аналіз існуючих
+      VPN-протоколів і методів автентифікації; проєктування програмного
+      забезпечення; тестування розробленої системи.
+  \end{itemize}
+\end{frame}
+
+
+%% ══════════════════════════════════════════════════════════════════════════════
+%%  SLIDE 3 — Постановка задачі                              (40 с)
 %%  One idea: WireGuard authenticates static keys, NOT users.
 %%  Text («ключ ≠ людина», lane labels) is baked into fig-problem.tex.
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[c]
-  \frametitle{Проблема}
+  \frametitle{Актуальність тематики}
   \fitfig{fig-problem}
 \end{frame}
 
 
 %% ══════════════════════════════════════════════════════════════════════════════
-%%  SLIDE 3 — Конкуренти                                    (42 с)
+%%  SLIDE 4 — Огляд існуючих рішень
 %%  One idea: no self-hosted solution covers all 4 criteria simultaneously.
 %%  Stub: fig-matrix4.tex shows placeholder until diagram-dev delivers.
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[c]
-  \frametitle{Конкуренти}
+  \frametitle{Огляд існуючих рішень}
   \fitfig{fig-matrix4}
 \end{frame}
 
@@ -159,7 +192,7 @@
 %%  Cycle: Rep. 1 (full thesis statement).
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[c]
-  \frametitle{Ідея}
+  \frametitle{Запропонований підхід до процесу авторизації}
   \fitfig{fig-idea}
 \end{frame}
 
@@ -171,7 +204,7 @@
 %%  Cycle: Rep. 2 — «механічно: два виклики subprocess».
 %% ══════════════════════════════════════════════════════════════════════════════
 \begin{frame}[c]
-  \frametitle{Як працює}
+  \frametitle{Процес автентифікації та встановлення тунелю}
   \fitfig{fig-sequence}
 \end{frame}
 
@@ -194,11 +227,12 @@
 %%  Cycle: Closing rep. — bullet 1 restates thesis in past tense.
 %%  NO «Дякую», NO «Питання?» frame after this.
 %% ══════════════════════════════════════════════════════════════════════════════
-\begin{frame}
+\begin{frame}[shrink=15]
   \frametitle{Внесок}
-  \vspace*{0.15em}
+  \vspace*{0.10em}
+  {\small
   \begin{itemize}
-    \setlength{\itemsep}{0.40em}
+    \setlength{\itemsep}{0.15em}
     \item \textbf{Запропоновано} модель «сесія як вузол» ---
           2FA без зміни протоколу і без PSK.
     \item \textbf{Реалізовано} повний стек (сервер + CLI);
@@ -208,6 +242,13 @@
     \item \textbf{Підготовлено} як відкрите self-hosted
           (стандартний WG-клієнт, без зовнішнього IdP).
   \end{itemize}
+  }%
+  \vspace{0.25em}
+  \begin{center}
+    {\small\color{clGrey} Код:\enspace
+      \href{https://github.com/andriivaliukh/diploma}{%
+        \textcolor{clAccent}{\texttt{github.com/andriivaliukh/diploma}}}}
+  \end{center}
 \end{frame}
 
 
