@@ -17,9 +17,10 @@
 \draw[tunnel] (client.west) -- (server.east);
 %%
 %% ── Labels at midpoint between the boxes (standalone nodes for clean placement)
+%% Label midpoint: server.east ≈ 1.7, client.west ≈ 9.3 → midpoint x = 5.5
 \node[font=\small\sffamily\bfseries, text=clAccent]
-  at (4.5, 0.45) {WireGuard-тунель (UDP)};
+  at (5.5, 0.45) {WireGuard-тунель (UDP)};
 \node[font=\small\sffamily, text=clGrey]
-  at (4.5, -0.45) {RTT $\approx$ 24\,мс};
+  at (5.5, -0.45) {RTT $\approx$ 24\,мс};
 %%
 \end{tikzpicture}
