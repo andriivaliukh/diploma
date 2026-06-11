@@ -71,10 +71,12 @@
 \node[font=\footnotesize\sffamily, text=clInk, below, align=center]
   at (\gTp, -0.15) {4 потоки};
 %%
-%% ── Legend ───────────────────────────────────────────────────────────────────
-\fill[clInk!80]  (0.3, 4.95) rectangle (0.75, 5.2);
-\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.075) {чистий WG};
-\fill[clAccent]  (2.7, 4.95) rectangle (3.15, 5.2);
-\node[font=\footnotesize\sffamily, text=clAccent, right] at (3.20, 5.075) {Наша система};
+%% ── Legend (two rows — avoids collision between «чистий WG» and «Наша система») ──
+%% Row 1: grey swatch + «чистий WG»
+\fill[clInk!80]  (0.3, 5.4) rectangle (0.75, 5.65);
+\node[font=\footnotesize\sffamily, text=clInk, right] at (0.80, 5.525) {чистий WG};
+%% Row 2: accent swatch + «Наша система»
+\fill[clAccent]  (0.3, 4.95) rectangle (0.75, 5.2);
+\node[font=\footnotesize\sffamily, text=clAccent, right] at (0.80, 5.075) {Наша система};
 %%
 \end{tikzpicture}

@@ -1,0 +1,25 @@
+%% fig-testbed.tex — Slide 7: benchmark testbed diagram.
+%% Two VPS nodes connected by a WireGuard tunnel.
+%% RTT value: canon thesis-facts §8 (23,94 мс ± 0,06 → «≈ 24 мс»).
+%% Compact horizontal band — shares slide with a metric list.
+%% Assumes styles.tex pre-loaded.
+\begin{tikzpicture}[x=1cm, y=1cm]
+%%
+%% ── VPS boxes (wider spacing so tunnel labels have room) ─────────────────────
+\node[wgbox, minimum width=3.4cm, minimum height=1.2cm] (server)
+  at (0, 0) {VPS-сервер\\(Польща)};
+\node[wgbox, minimum width=3.4cm, minimum height=1.2cm] (client)
+  at (11.0, 0) {VPS-клієнт\\(Німеччина)};
+%%
+%% ── WireGuard tunnel: double accent arrow ────────────────────────────────────
+%% Drawn as two parallel accent arrows (bidirectional tunnel)
+\draw[tunnel] (server.east) -- (client.west);
+\draw[tunnel] (client.west) -- (server.east);
+%%
+%% ── Labels at midpoint between the boxes (standalone nodes for clean placement)
+\node[font=\small\sffamily\bfseries, text=clAccent]
+  at (4.5, 0.45) {WireGuard-тунель (UDP)};
+\node[font=\small\sffamily, text=clGrey]
+  at (4.5, -0.45) {RTT $\approx$ 24\,мс};
+%%
+\end{tikzpicture}
